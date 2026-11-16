@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17201c">
+<title>Trysil løpekart</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+  /* Layout: kartet fyller skjermen. Nederst ligger en dokk med posisjonsknapper og et panel som kan slås sammen. */
+  :root {
+    --panel: #ffffff;
+    --ink: #14211c;
+    --muted: #5d6b65;
+    --line: #d9e0dc;
+    --soft: #f1f4f2;
+    --route: #d81e5b;
+    --gps: #1a73e8;
+    --good: #1f7a4d;
+    --over: #b45309;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --panel: #17201c; --ink: #eef3f0; --muted: #a3b1ab; --line: #33423b; --soft: #212c27; --good: #58c48d; --over: #f0a54a; --gps: #6ea8ff; }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; overflow: hidden; font-family: var(--font); color: var(--ink); background: #cfd8d3; }
+  #map { position: absolute; inset: 0; }
+  .leaflet-container { font-family: var(--font); cursor: crosshair; }
+  .leaflet-top { top: env(safe-area-inset-top, 0px); }
+
+  button, input { font: inherit; color: inherit; }
+  button { min-height: 48px; padding: 0 14px; font-size: 15px; font-weight: 600; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px; cursor: pointer; touch-action: manipulation; }
+  button:disabled { opacity: .4; cursor: default; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--gps); outline-offset: 1px; }
+
+  #dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1100; pointer-events: none;
+    padding: 0 10px calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px; }
+  #dock > * { pointer-events: auto; }
+  @media (min-width: 700px) { #dock { left: 16px; right: auto; width: 430px; padding: 0 0 16px; } }
+
+  #fabs { display: flex; flex-wrap: wrap-reverse; justify-content: flex-end; gap: 8px; pointer-events: none; }
+  #fabs button { pointer-events: auto; border-radius: 26px; min-height: 52px; padding: 0 16px; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 3px 12px rgba(0,0,0,.25); }
+  #fabs svg { width: 22px; height: 22px; flex: none; }
+  #fabs button[aria-pressed="true"] { background: var(--gps); border-color: var(--gps); color: #fff; }
+  @media (prefers-color-scheme: dark) { #fabs button[aria-pressed="true"] { color: #0b1a2e; } }
+
+  #panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.25); overflow: hidden; }
+  .bar { height: 5px; background: var(--line); }
+  #fill { height: 100%; width: 0; background: var(--route); transition: width .15s; }
+  #head { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 0; }
+  #toggle { flex: 1; min-width: 0; min-height: 60px; display: flex; align-items: center; gap: 12px; text-align: left;
+    border: 0; background: transparent; border-radius: 12px; padding: 4px 8px 4px 14px; }
+  #toggle .big { font-size: 32px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #toggle .big small { font-size: 15px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+  #sub { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; color: var(--muted); line-height: 1.3; }
+  #toggle .chev { width: 22px; height: 22px; flex: none; color: var(--muted); transition: transform .15s; }
+  #toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  #undo { flex: none; }
+
+  #body { display: flex; flex-direction: column; gap: 12px; padding: 4px 14px 14px; max-height: min(58vh, 520px); overflow-y: auto;
+    -webkit-overflow-scrolling: touch; border-top: 1px solid var(--line); }
+  #hint { margin: 8px 0 0; font-size: 14px; color: var(--muted); line-height: 1.4; }
+  #status { font-size: 14px; font-weight: 600; margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #status.good { color: var(--good); }
+  #status.over { color: var(--over); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > button { flex: 1 1 0; min-width: 0; padding: 0 8px; }
+  .small { min-height: 40px; font-size: 14px; }
+  .fields { justify-content: space-between; }
+  .field { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); flex: 0 1 auto; }
+  .field input { width: 64px; min-height: 48px; font-size: 16px; color: var(--ink); background: transparent; text-align: center;
+    border: 1px solid var(--line); border-radius: 10px; padding: 0 6px; }
+  .snap { display: flex; align-items: center; gap: 10px; font-size: 15px; min-height: 44px; cursor: pointer; }
+  .snap input { width: 22px; height: 22px; accent-color: var(--route); margin: 0; }
+
+  #elev { background: var(--soft); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  #elevTop { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+  #elevText b { font-size: 16px; }
+  #profile { width: 100%; height: 64px; display: block; }
+  #profArea { fill: var(--route); opacity: .22; }
+  #profLine { fill: none; stroke: var(--route); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  #profAxis { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  #toast { position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); left: 10px; right: 64px; z-index: 1150; max-width: 420px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 3px 12px rgba(0,0,0,.25);
+    padding: 10px 10px 10px 14px; font-size: 14px; line-height: 1.4; display: flex; gap: 10px; align-items: flex-start; }
+  #toast p { margin: 0; flex: 1; }
+  #toast button { flex: none; }
+
+  #sheet { position: absolute; inset: 0; z-index: 1200; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; }
+  #sheet .card { width: 100%; max-width: 480px; max-height: 86%; overflow-y: auto; background: var(--panel); border-radius: 18px 18px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
+  @media (min-width: 700px) { #sheet { align-items: center; } #sheet .card { border-radius: 18px; } }
+  #sheet h2 { margin: 0; font-size: 20px; }
+  #sheet .top { display: flex; align-items: center; justify-content: space-between; }
+  #saveForm { display: flex; gap: 8px; }
+  #routeName { flex: 1; min-width: 0; min-height: 48px; font-size: 16px; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; }
+  #saveMsg { font-size: 14px; color: var(--over); margin: 0; }
+  #routeList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  #routeList li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+  #routeList .nm { flex: 1; min-width: 0; }
+  #routeList .nm b { display: block; overflow-wrap: anywhere; }
+  #routeList .nm span { font-size: 13px; color: var(--muted); }
+  #routeEmpty { font-size: 14px; color: var(--muted); margin: 0; }
+
+  #surf { display: flex; flex-direction: column; gap: 6px; font-size: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
+  #surfBar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
+  #surfBar i { display: block; height: 100%; }
+  .s-asfalt { background: var(--muted); }
+  .s-grus { background: #c98a2b; }
+  .s-sti { background: var(--good); }
+  #info { font-size: 14px; line-height: 1.45; display: flex; flex-direction: column; gap: 2px; }
+  #info .cred { font-size: 12px; color: var(--muted); }
+  #info a { color: inherit; }
+  #recBar { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 3px 12px rgba(0,0,0,.25);
+    padding: 8px 8px 8px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #recBar .dot { width: 12px; height: 12px; border-radius: 50%; background: #d92d20; flex: none; }
+  #recBar.paused .dot, #recBar.done .dot { background: var(--muted); }
+  #recBar .stats { flex: 1 1 150px; display: flex; align-items: baseline; gap: 12px; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #recTime { font-size: 24px; font-weight: 700; }
+  #recBar .btns { display: flex; gap: 8px; margin-left: auto; }
+  .hit { display: flex; align-items: center; justify-content: center; }
+  .pt { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid var(--route); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .pt.start { width: 24px; height: 24px; background: #1f7a4d; border-color: #fff; color: #fff; font: 700 12px/18px var(--font); text-align: center; }
+  .tick { font: 700 12px/1 var(--font); color: #fff; background: #14211c; border: 1px solid #fff; border-radius: 10px; padding: 3px 7px;
+    white-space: nowrap; transform: translate(-50%, -50%); display: inline-block; }
+</style>
+</head>
+<body>
+<div id="map" aria-label="Kart over Trysil"></div>
+
+<div id="toast" role="status" hidden><p id="toastText"></p><button type="button" id="toastClose" class="small">Lukk</button></div>
+
+<div id="dock">
+  <div id="fabs">
+    <button type="button" id="recBtn" hidden>Ta opp tur</button>
+    <button type="button" id="gpsStart" hidden disabled>Start ruta her</button>
+    <button type="button" id="gpsFollow" aria-pressed="false" hidden>Følg meg</button>
+    <button type="button" id="gpsBtn" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      <span id="gpsLabel">Min posisjon</span>
+    </button>
+  </div>
+
+  <div id="recBar" hidden>
+    <span class="dot" aria-hidden="true"></span>
+    <div class="stats"><b id="recTime">0:00</b><span id="recDist">0,00 km</span><span id="recPace"></span></div>
+    <div class="btns">
+      <button type="button" id="recPause">Pause</button>
+      <button type="button" id="recStop">Stopp</button>
+      <button type="button" id="recGpx" hidden>GPX</button>
+      <button type="button" id="recClose" hidden>Lukk</button>
+    </div>
+  </div>
+
+  <section id="panel" aria-label="Rute">
+    <div class="bar" aria-hidden="true"><div id="fill"></div></div>
+    <div id="head">
+      <button type="button" id="toggle" aria-expanded="true" aria-controls="body">
+        <span class="big"><span id="total">0,00</span><small>km</small></span>
+        <span id="sub"></span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+      </button>
+      <button type="button" id="undo">Angre</button>
+    </div>
+    <div id="body">
+      <p id="hint"></p>
+      <div id="status" role="status"><span id="statusText"></span><button type="button" id="retryRoute" class="small" hidden>Prøv igjen</button></div>
+      <div class="row">
+        <button type="button" id="backSame">Tilbake samme vei</button>
+        <button type="button" id="closeLoop">Lukk runden</button>
+      </div>
+      <div class="row">
+        <button type="button" id="routesBtn">Ruter</button>
+        <button type="button" id="gpxBtn">GPX</button>
+        <button type="button" id="shareBtn">Del</button>
+        <button type="button" id="clear">Tøm</button>
+      </div>
+      <div id="elev" hidden>
+        <div id="elevTop"><span id="elevText"></span><button type="button" id="elevRetry" class="small" hidden>Prøv igjen</button></div>
+        <svg id="profile" viewBox="0 0 300 64" preserveAspectRatio="none" role="img" aria-label="Høydeprofil for ruta" hidden><path id="profArea"/><path id="profLine"/></svg>
+        <div id="profAxis" hidden><span>0 km</span><span id="profRange"></span><span id="profEnd"></span></div>
+        <div id="surf" hidden><div id="surfBar" aria-hidden="true"></div><span id="surfText"></span></div>
+      </div>
+      <div id="info">
+        <span id="sunText"></span>
+        <span id="wxText"></span>
+        <span class="cred" id="wxCred" hidden>Vær fra <a href="https://www.met.no/" target="_blank" rel="noopener">MET Norge</a></span>
+      </div>
+      <div class="row fields">
+        <label class="field" for="goal">Mål <input type="number" id="goal" min="0.5" max="60" step="0.5" value="3" inputmode="decimal"> km</label>
+        <label class="field" for="pace">Tempo <input type="text" id="pace" value="7:30" inputmode="text" autocomplete="off" aria-describedby="paceUnit"> <span id="paceUnit">min/km</span></label>
+      </div>
+      <label class="snap" for="snap"><input type="checkbox" id="snap" checked> Følg vei og sti</label>
+    </div>
+  </section>
+</div>
+
+<div id="sheet" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="top"><h2 id="sheetTitle">Ruter</h2><button type="button" id="sheetClose">Lukk</button></div>
+    <form id="saveForm">
+      <input type="text" id="routeName" maxlength="60" placeholder="Elva rundt 3 km" aria-label="Navn på ruta" autocomplete="off">
+      <button type="submit" id="saveBtn">Lagre ruta</button>
+    </form>
+    <p id="saveMsg" role="alert" hidden></p>
+    <ul id="routeList"></ul>
+    <p id="routeEmpty" hidden>Ingen lagrede ruter ennå.</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'trysil-lopekart-v2', KEY_OLD = 'trysil-lopekart-v1', KEY_ROUTES = 'trysil-lopekart-ruter-v1';
+  var ROUTER = 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/';
+  var ELEV = 'https://ws.geonorge.no/hoydedata/v1/punkt';
+  var VALHALLA = 'https://valhalla1.openstreetmap.de/trace_attributes';
+  var MET = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
+  var KEY_RUN = 'trysil-lopekart-tur-v1', TRYSIL = [61.3149, 12.2632];
+  var el = function (id) { return document.getElementById(id); };
+
+  function readJSON(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
+  function writeJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; } }
+
+  // ---------- Tilstand ----------
+  var state = { pts: [], goal: 3, pace: 7.5, snap: true, collapsed: null, name: '' };
+  var saved = readJSON(KEY) || readJSON(KEY_OLD);
+  if (saved && Array.isArray(saved.pts)) {
+    state.pts = saved.pts.filter(function (p) { return Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]); });
+    if (saved.goal > 0) state.goal = saved.goal;
+    if (saved.pace > 0) state.pace = saved.pace;
+    if (typeof saved.snap === 'boolean') state.snap = saved.snap;
+    if (typeof saved.collapsed === 'boolean') state.collapsed = saved.collapsed;
+    if (typeof saved.name === 'string') state.name = saved.name;
+  }
+  if (state.collapsed === null) state.collapsed = window.innerWidth < 700;
+  var hist = [], cache = {}, dragging = false;
+  var R = { path: [], cum: [0], total: 0, pending: 0, failed: 0 };
+  var elev = { status: 'none', key: null }, elevTimer = null;
+  var surf = { status: 'none', key: null }, surfTimer = null;
+  var wx = { status: 'none', at: 0, lat: null, lon: null, text: '' };
+  function save() { writeJSON(KEY, state); }
+
+  // ---------- Format ----------
+  function km(m) { return (m / 1000).toFixed(2).replace('.', ','); }
+  function num(n) { return String(n).replace('.', ','); }
+  function fmtTime(min) {
+    min = Math.round(min);
+    return min < 60 ? min + ' min' : Math.floor(min / 60) + ' t ' + (min % 60) + ' min';
+  }
+  function fmtPace(p) { var m = Math.floor(p), s = Math.round((p - m) * 60); if (s === 60) { m++; s = 0; } return m + ':' + (s < 10 ? '0' : '') + s; }
+  function parsePace(str) {
+    str = String(str).trim().replace(',', '.');
+    var m = /^(\d{1,2})[:.](\d{2})$/.exec(str), v;
+    if (m && +m[2] < 60 && str.indexOf(':') > -1) v = +m[1] + (+m[2]) / 60; else v = parseFloat(str);
+    return v >= 2 && v <= 20 ? v : null;
+  }
+  function same(a, b) { return Math.abs(a[0] - b[0]) < 1e-7 && Math.abs(a[1] - b[1]) < 1e-7; }
+
+  // ---------- Kart ----------
+  var map = L.map('map', { zoomControl: false, attributionControl: false, doubleClickZoom: false }).setView([61.3105, 12.232], 13);
+  var topo = L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png', {
+    maxNativeZoom: 18, maxZoom: 19, attribution: '&copy; <a href="https://www.kartverket.no/">Kartverket</a>'
+  });
+  var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bidragsytere'
+  });
+  topo.addTo(map);
+  L.control.attribution({ position: 'topleft', prefix: false }).addTo(map);
+  L.control.layers({ 'Turkart (Kartverket)': topo, 'OpenStreetMap': osm }, null, { position: 'topright' }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+  L.control.scale({ imperial: false, position: 'topleft' }).addTo(map);
+
+  var tileErrors = 0;
+  topo.on('tileerror', function () { if (++tileErrors === 4) toast('Kartet lastet ikke. Bytt kartlag med knappen oppe til høyre, eller sjekk nettforbindelsen.'); });
+  map.on('baselayerchange', function () { tileErrors = 0; });
+
+  var routeColor = getComputedStyle(document.documentElement).getPropertyValue('--route').trim() || '#d81e5b';
+  var gpsColor = '#1a73e8';
+  var gpsLayer = L.layerGroup().addTo(map);
+  var drawLayer = L.layerGroup().addTo(map);
+  var markerLayer = L.layerGroup().addTo(map);
+
+  // ---------- Melding øverst ----------
+  var toastKind = '';
+  function toast(text, kind) { toastKind = kind || ''; el('toastText').textContent = text; el('toast').hidden = false; }
+  el('toastClose').addEventListener('click', function () { el('toast').hidden = true; });
+
+  // ---------- Ruting: én strekning mellom to punkter ----------
+  function keyOf(a, b) { return a[0].toFixed(5) + ',' + a[1].toFixed(5) + '|' + b[0].toFixed(5) + ',' + b[1].toFixed(5); }
+  function fetchLeg(k, a, b) {
+    cache[k] = { status: 'pending' };
+    var url = ROUTER + a[1] + ',' + a[0] + ';' + b[1] + ',' + b[0] + '?alternatives=false&steps=false&geometries=geojson&overview=full';
+    fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+      if (j.code !== 'Ok' || !j.routes || !j.routes.length) throw new Error('Ingen rute');
+      var c = j.routes[0].geometry.coordinates.map(function (p) { return [p[1], p[0]]; });
+      if (c.length < 2) throw new Error('Ingen rute');
+      cache[k] = { status: 'ok', coords: c };
+    }).catch(function () { cache[k] = { status: 'fail' }; }).then(draw);
+  }
+  function leg(a, b) {
+    if (!state.snap) return { coords: [a, b], status: 'ok' };
+    var k = keyOf(a, b), e = cache[k], rev = false;
+    if (!e && cache[keyOf(b, a)]) { e = cache[keyOf(b, a)]; rev = true; }   // samme vei tilbake: gjenbruk strekningen baklengs
+    if (!e && !dragging) { fetchLeg(k, a, b); e = cache[k]; }
+    if (e && e.status === 'ok') return { coords: rev ? e.coords.slice().reverse() : e.coords, status: 'ok' };
+    return { coords: [a, b], status: e ? e.status : 'pending' };
+  }
+
+  // ---------- Punkter og angre ----------
+  function pushHist() { hist.push(JSON.stringify(state.pts)); if (hist.length > 60) hist.shift(); }
+  function mutate(fn) { pushHist(); fn(); refresh(); }
+  function refresh() { buildMarkers(); draw(); save(); loadWx(); }
+
+  function buildMarkers() {
+    markerLayer.clearLayers();
+    state.pts.forEach(function (p, i) {
+      for (var j = 0; j < i; j++) if (same(state.pts[j], p)) return;   // punkt som brukes flere ganger får ett merke
+      var first = i === 0, linked = [];
+      var icon = L.divIcon({ className: 'hit', html: '<div class="pt' + (first ? ' start' : '') + '">' + (first ? 'S' : '') + '</div>',
+        iconSize: [40, 40], iconAnchor: [20, 20] });
+      var m = L.marker(p, { icon: icon, draggable: true, title: first ? 'Start' : 'Punkt ' + (i + 1) });
+      m.on('dragstart', function () {
+        pushHist(); dragging = true; linked = [];
+        state.pts.forEach(function (q, n) { if (same(q, p)) linked.push(n); });
+      });
+      m.on('drag', function (e) {
+        var ll = e.target.getLatLng();
+        linked.forEach(function (n) { state.pts[n] = [ll.lat, ll.lng]; });
+        draw();
+      });
+      m.on('dragend', function () { dragging = false; setTimeout(refresh, 0); });
+      markerLayer.addLayer(m);
+    });
+  }
+
+  // ---------- Tegn ruta og regn ut lengde ----------
+  function draw() {
+    drawLayer.clearLayers();
+    var pts = state.pts, n = pts.length, path = [], pending = 0, failed = 0, i;
+    for (i = 1; i < n; i++) {
+      var l = leg(pts[i - 1], pts[i]);
+      if (l.status === 'pending') pending++;
+      if (l.status === 'fail') failed++;
+      var rough = l.status !== 'ok';
+      L.polyline(l.coords, { color: routeColor, weight: rough ? 3 : 5, opacity: rough ? .6 : .9,
+        dashArray: rough ? '4 8' : null, interactive: false }).addTo(drawLayer);
+      path = path.concat(l.coords);
+    }
+    var cum = [0];
+    for (i = 1; i < path.length; i++) cum.push(cum[i - 1] + map.distance(path[i - 1], path[i]));
+    R = { path: path, cum: cum, total: path.length ? cum[cum.length - 1] : 0, pending: pending, failed: failed };
+
+    var next = 1000;   // merke for hver hele kilometer
+    for (i = 1; i < path.length; i++) {
+      var seg = cum[i] - cum[i - 1];
+      while (seg > 0 && cum[i] >= next) {
+        var t = (next - cum[i - 1]) / seg, a = path[i - 1], b = path[i];
+        L.marker([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], { interactive: false, keyboard: false,
+          icon: L.divIcon({ className: '', html: '<span class="tick">' + (next / 1000) + ' km</span>', iconSize: [0, 0] }) }).addTo(drawLayer);
+        next += 1000;
+      }
+    }
+    if (!dragging) { scheduleElev(); scheduleSurf(); }
+    render();
+  }
+
+  // ---------- Høyde ----------
+  function elevKey() {
+    var p = R.path, n = p.length;
+    return n + '|' + R.total.toFixed(0) + '|' + p[0] + '|' + p[n >> 1] + '|' + p[n - 1];
+  }
+  function scheduleElev() {
+    clearTimeout(elevTimer);
+    if (R.path.length < 2 || R.total < 20) { elev = { status: 'none', key: null }; return; }
+    if (R.pending) { elev = { status: 'loading', key: null }; return; }
+    var key = elevKey();
+    if (key === elev.key && elev.status !== 'none') return;
+    elev = { status: 'loading', key: key };
+    elevTimer = setTimeout(function () { loadElev(key); }, 600);
+  }
+  function fetchBatch(batch) {
+    var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 12000);
+    var pts = batch.map(function (s) { return [+s.p[1].toFixed(5), +s.p[0].toFixed(5)]; });   // rekkefølge: øst, nord
+    return fetch(ELEV + '?koordsys=4258&geojson=false&punkter=' + encodeURIComponent(JSON.stringify(pts)), { signal: ctrl.signal })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) {
+        clearTimeout(timer);
+        if (!j || !Array.isArray(j.punkter) || j.punkter.length !== batch.length) throw new Error('Uventet svar');
+        return j.punkter.map(function (q) {
+          if (typeof q.z !== 'number' || !isFinite(q.z)) throw new Error('Mangler høyde');
+          return q.z;
+        });
+      });
+  }
+  function loadElev(key) {
+    var path = R.path, cum = R.cum, total = R.total;
+    var step = Math.max(20, total / 199), samples = [], i = 1, d;
+    for (d = 0; d < total; d += step) {
+      while (i < cum.length - 1 && cum[i] < d) i++;
+      var seg = cum[i] - cum[i - 1], t = seg > 0 ? (d - cum[i - 1]) / seg : 0, a = path[i - 1], b = path[i];
+      samples.push({ d: d, p: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t] });
+    }
+    samples.push({ d: total, p: path[path.length - 1] });
+    var batches = [];
+    for (i = 0; i < samples.length; i += 50) batches.push(samples.slice(i, i + 50));   // tjenesten tar maks 50 punkter per kall
+    Promise.all(batches.map(fetchBatch)).then(function (parts) {
+      if (elev.key !== key) return;
+      var zs = [].concat.apply([], parts), up = 0, down = 0, ref = zs[0], min = zs[0], max = zs[0];
+      zs.forEach(function (z, n) {
+        samples[n].z = z;
+        if (z < min) min = z;
+        if (z > max) max = z;
+        var diff = z - ref;   // teller bare endringer på minst 2 m, så småhumper og målestøy ikke blåser opp tallet
+        if (diff >= 2) { up += diff; ref = z; } else if (diff <= -2) { down -= diff; ref = z; }
+      });
+      elev = { status: 'ok', key: key, samples: samples, up: up, down: down, min: min, max: max, total: total };
+      render();
+    }).catch(function () {
+      if (elev.key !== key) return;
+      elev = { status: 'fail', key: key };
+      render();
+    });
+  }
+  function zAt(d) {
+    var s = elev.samples, i = 1;
+    while (i < s.length - 1 && s[i].d < d) i++;
+    var span = s[i].d - s[i - 1].d, t = span > 0 ? Math.min(1, Math.max(0, (d - s[i - 1].d) / span)) : 0;
+    return s[i - 1].z + (s[i].z - s[i - 1].z) * t;
+  }
+
+  // ---------- Underlag (anslag fra OpenStreetMap via Valhalla) ----------
+  var SURF = { paved_smooth: 'asfalt', paved: 'asfalt', paved_rough: 'asfalt', compacted: 'grus', gravel: 'grus', dirt: 'sti', path: 'sti', impassable: 'sti' };
+  function scheduleSurf() {
+    clearTimeout(surfTimer);
+    if (R.path.length < 2 || R.total < 20) { surf = { status: 'none', key: null }; return; }
+    if (R.pending) { surf = { status: 'loading', key: null }; return; }
+    var key = elevKey();
+    if (key === surf.key && surf.status !== 'none') return;
+    surf = { status: 'loading', key: key };
+    surfTimer = setTimeout(function () { loadSurf(key); }, 900);
+  }
+  function loadSurf(key) {
+    var shape = [], prev = null, total = R.total;
+    R.path.forEach(function (p) {
+      if (prev && same(prev, p)) return;
+      prev = p;
+      shape.push({ lat: +p[0].toFixed(6), lon: +p[1].toFixed(6) });
+    });
+    var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 12000);
+    fetch(VALHALLA, { method: 'POST', signal: ctrl.signal, body: JSON.stringify({ shape: shape, costing: 'pedestrian', shape_match: 'map_snap',
+      filters: { attributes: ['edge.surface', 'edge.length'], action: 'include' } }) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) {
+        clearTimeout(timer);
+        if (surf.key !== key) return;
+        var sum = { asfalt: 0, grus: 0, sti: 0 }, all = 0;
+        (j.edges || []).forEach(function (e) {
+          var c = SURF[e.surface];
+          if (!c || !(e.length > 0)) return;
+          sum[c] += e.length; all += e.length;
+        });
+        if (!(all > 0)) throw new Error('Ingen treff');
+        surf = { status: 'ok', key: key, parts: { asfalt: sum.asfalt / all * total, grus: sum.grus / all * total, sti: sum.sti / all * total }, total: total };
+        render();
+      }).catch(function () {
+        if (surf.key !== key) return;
+        surf = { status: 'fail', key: key };
+        render();
+      });
+  }
+
+  // ---------- Sol (regnes ut lokalt) og vær (MET Norge) ----------
+  function refPoint() { return state.pts.length ? state.pts[0] : TRYSIL; }
+  function sunTimes(date, lat, lng) {
+    var rad = Math.PI / 180, dayMs = 86400000, J1970 = 2440588, J2000 = 2451545, e = rad * 23.4397;
+    var lw = rad * -lng, phi = rad * lat, d = date.getTime() / dayMs - 0.5 + J1970 - J2000;
+    var n = Math.round(d - 0.0009 - lw / (2 * Math.PI));
+    var ds = 0.0009 + lw / (2 * Math.PI) + n;
+    var M = rad * (357.5291 + 0.98560028 * ds);
+    var C = rad * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M));
+    var L = M + C + rad * 102.9372 + Math.PI;
+    var dec = Math.asin(Math.sin(e) * Math.sin(L));
+    var Jnoon = J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
+    function setJ(h) {
+      var w = Math.acos((Math.sin(h * rad) - Math.sin(phi) * Math.sin(dec)) / (Math.cos(phi) * Math.cos(dec)));
+      return J2000 + 0.0009 + (w + lw) / (2 * Math.PI) + n + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
+    }
+    function toDate(j) { return new Date((j + 0.5 - J1970) * dayMs); }
+    var jSet = setJ(-0.833), jDusk = setJ(-6);
+    if (isNaN(jSet)) return null;
+    return { rise: toDate(Jnoon - (jSet - Jnoon)), set: toDate(jSet), dusk: isNaN(jDusk) ? null : toDate(jDusk) };
+  }
+  function hm(d) { return d.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' }); }
+  function sunLine() {
+    var p = refPoint(), now = new Date(), t = sunTimes(now, p[0], p[1]);
+    if (!t) return '';
+    var dark = t.dusk ? ' · mørkt ca. ' + hm(t.dusk) : '', txt;
+    if (now < t.rise) txt = 'Sol opp ca. ' + hm(t.rise) + ' · ned ca. ' + hm(t.set);
+    else if (now < t.set) txt = 'Sol ned ca. ' + hm(t.set) + ' (om ' + fmtTime((t.set - now) / 60000) + ')' + dark;
+    else if (t.dusk && now < t.dusk) txt = 'Sola gikk ned ca. ' + hm(t.set) + dark;
+    else {
+      var tm = sunTimes(new Date(now.getTime() + 86400000), p[0], p[1]);
+      txt = 'Mørkt nå' + (tm ? ' · sol opp i morgen ca. ' + hm(tm.rise) : '');
+    }
+    var end = now.getTime() + R.total / 1000 * state.pace * 60000;
+    if (R.total > 0 && (end > t.set.getTime() || now < t.rise)) txt += ' · ta med lys';
+    return txt;
+  }
+  var WX = { clearsky: 'klarvær', fair: 'lettskyet', partlycloudy: 'delvis skyet', cloudy: 'skyet', fog: 'tåke',
+    rain: 'regn', lightrain: 'lett regn', heavyrain: 'kraftig regn', rainshowers: 'regnbyger', lightrainshowers: 'lette regnbyger', heavyrainshowers: 'kraftige regnbyger',
+    sleet: 'sludd', lightsleet: 'lett sludd', heavysleet: 'kraftig sludd', sleetshowers: 'sluddbyger', lightsleetshowers: 'lette sluddbyger', heavysleetshowers: 'kraftige sluddbyger',
+    snow: 'snø', lightsnow: 'lett snø', heavysnow: 'kraftig snø', snowshowers: 'snøbyger', lightsnowshowers: 'lette snøbyger', heavysnowshowers: 'kraftige snøbyger' };
+  function wxWord(code) {
+    code = String(code || '').replace(/_(day|night|polartwilight)$/, '');
+    var thunder = /andthunder$/.test(code), base = WX[code.replace(/andthunder$/, '').replace(/^lightss/, 'lights')];
+    return base ? base + (thunder ? ' og torden' : '') : '';
+  }
+  function loadWx() {
+    var p = refPoint(), lat = +p[0].toFixed(2), lon = +p[1].toFixed(2), now = Date.now();
+    if (wx.status === 'loading') return;
+    var fresh = now - wx.at < (wx.status === 'ok' ? 30 : 5) * 60000;
+    if (wx.status !== 'none' && fresh && wx.lat === lat && wx.lon === lon) return;
+    wx = { status: 'loading', at: now, lat: lat, lon: lon, text: wx.text };
+    var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 12000);
+    fetch(MET + '?lat=' + lat + '&lon=' + lon, { signal: ctrl.signal })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) {
+        clearTimeout(timer);
+        var ts = j.properties.timeseries, e = ts[0], i;
+        for (i = 0; i < ts.length && new Date(ts[i].time).getTime() <= Date.now(); i++) e = ts[i];
+        var d = e.data.instant.details, h = e.data.next_1_hours;
+        if (typeof d.air_temperature !== 'number') throw new Error('Uventet svar');
+        var parts = [String(Math.round(d.air_temperature)).replace('-', '−') + '°'];
+        var word = h && h.summary ? wxWord(h.summary.symbol_code) : '';
+        if (word) parts.push(word);
+        if (typeof d.wind_speed === 'number') parts.push('vind ' + Math.round(d.wind_speed) + ' m/s');
+        if (h && h.details && typeof h.details.precipitation_amount === 'number')
+          parts.push(h.details.precipitation_amount > 0 ? num(h.details.precipitation_amount) + ' mm neste time' : 'ingen nedbør neste time');
+        wx = { status: 'ok', at: Date.now(), lat: lat, lon: lon, text: 'Nå ' + parts.join(' · ') };
+        render();
+      }).catch(function () {
+        wx = { status: 'fail', at: Date.now(), lat: lat, lon: lon, text: '' };
+        render();
+      });
+  }
+
+  // ---------- Vis tall og knapper ----------
+  function render() {
+    var n = state.pts.length, total = R.total, goalM = state.goal * 1000;
+    el('total').textContent = km(total);
+    var sub = el('sub'), hint = el('hint');
+    if (n === 0) sub.textContent = 'Trykk på kartet der du starter';
+    else if (n === 1) sub.textContent = 'Trykk neste punkt';
+    else if (R.pending) sub.textContent = 'Finner vei…';
+    else sub.textContent = fmtTime(total / 1000 * state.pace) + (elev.status === 'ok' ? ' · ↑ ' + Math.round(elev.up) + ' m' : '');
+    hint.hidden = n > 1;
+    hint.textContent = n === 0 ? 'Trykk på kartet der du starter, og trykk videre dit du vil løpe. Ruta følger vei og sti mellom punktene.'
+      : 'Start er satt. Trykk neste punkt. Dra i et punkt for å flytte det.';
+
+    var st = el('status'), txt = el('statusText'), diff = goalM - total;
+    st.className = '';
+    el('retryRoute').hidden = !R.failed;
+    if (R.failed) { txt.textContent = 'Fant ikke vei for ' + R.failed + (R.failed === 1 ? ' strekning' : ' strekninger') + '. Der måles rett linje (stiplet).'; st.className = 'over'; }
+    else if (n < 2 || !(goalM > 0)) txt.textContent = '';
+    else if (Math.abs(diff) <= 100) { txt.textContent = 'Treffer målet på ' + num(state.goal) + ' km.'; st.className = 'good'; }
+    else if (diff > 0) txt.textContent = km(diff) + ' km igjen til målet på ' + num(state.goal) + ' km.';
+    else { txt.textContent = km(-diff) + ' km over målet på ' + num(state.goal) + ' km.'; st.className = 'over'; }
+    st.hidden = !txt.textContent;
+    el('fill').style.width = goalM > 0 ? Math.min(100, total / goalM * 100) + '%' : '0';
+
+    el('undo').disabled = n === 0 && !hist.length;
+    el('clear').disabled = n === 0;
+    el('backSame').disabled = n < 2;
+    el('closeLoop').disabled = n < 2 || same(state.pts[0], state.pts[n - 1]);
+    el('gpxBtn').disabled = n < 2 || R.pending > 0;
+
+    var box = el('elev'), et = el('elevText'), ok = elev.status === 'ok';
+    box.hidden = elev.status === 'none';
+    el('elevRetry').hidden = elev.status !== 'fail';
+    el('profile').toggleAttribute('hidden', !ok);   // SVG har ikke .hidden-egenskapen
+    el('profAxis').hidden = !ok;
+    if (elev.status === 'loading') et.textContent = 'Henter høyde…';
+    else if (elev.status === 'fail') et.textContent = 'Høyde ikke tilgjengelig';
+    else if (ok) {
+      et.innerHTML = 'Stigning <b>' + Math.round(elev.up) + ' m</b> · nedover ' + Math.round(elev.down) + ' m';
+      var W = 300, H = 64, range = Math.max(elev.max - elev.min, 10), line = '';
+      elev.samples.forEach(function (s, i) {
+        var x = elev.total > 0 ? s.d / elev.total * W : 0, y = H - 4 - (s.z - elev.min) / range * (H - 10);
+        line += (i ? ' L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1);
+      });
+      el('profLine').setAttribute('d', line);
+      el('profArea').setAttribute('d', line + ' L' + W + ',' + H + ' L0,' + H + ' Z');
+      el('profRange').textContent = Math.round(elev.min) + '–' + Math.round(elev.max) + ' moh';
+      el('profEnd').textContent = km(elev.total) + ' km';
+    }
+
+    var sb = el('surf'), stx = el('surfText'), bar = el('surfBar');
+    sb.hidden = surf.status === 'none';
+    bar.textContent = '';
+    bar.hidden = surf.status !== 'ok';
+    if (surf.status === 'loading') stx.textContent = 'Henter underlag…';
+    else if (surf.status === 'fail') stx.textContent = 'Underlag ikke tilgjengelig';
+    else if (surf.status === 'ok') {
+      var names = { asfalt: 'asfalt', grus: 'grus', sti: 'sti' }, bits = [];
+      Object.keys(names).forEach(function (k) {
+        var m = surf.parts[k];
+        if (m < 50) return;
+        bits.push(names[k] + ' ' + (m / 1000).toFixed(1).replace('.', ',') + ' km');
+        var seg = document.createElement('i');
+        seg.className = 's-' + k;
+        seg.style.width = (m / surf.total * 100) + '%';
+        bar.appendChild(seg);
+      });
+      stx.textContent = 'Underlag (anslag): ' + bits.join(' · ');
+    }
+    el('shareBtn').disabled = n < 2;
+
+    el('sunText').textContent = sunLine();
+    el('wxText').textContent = wx.status === 'ok' ? wx.text : wx.status === 'fail' ? 'Vær ikke tilgjengelig' : wx.text || 'Henter vær…';
+    el('wxCred').hidden = wx.status !== 'ok';
+  }
+
+  // ---------- Kart-trykk og knapper ----------
+  map.on('click', function (e) {
+    var p = [e.latlng.lat, e.latlng.lng], n = state.pts.length;
+    if (n && map.distance(state.pts[n - 1], p) < 2) return;   // dobbelttrykk på samme sted
+    mutate(function () { state.pts.push(p); });
+  });
+  el('undo').addEventListener('click', function () {
+    if (hist.length) state.pts = JSON.parse(hist.pop()); else state.pts.pop();
+    refresh();
+  });
+  el('clear').addEventListener('click', function () { mutate(function () { state.pts = []; state.name = ''; }); });
+  el('backSame').addEventListener('click', function () {
+    mutate(function () { for (var i = state.pts.length - 2; i >= 0; i--) state.pts.push(state.pts[i].slice()); });
+  });
+  el('closeLoop').addEventListener('click', function () { mutate(function () { state.pts.push(state.pts[0].slice()); }); });
+  el('retryRoute').addEventListener('click', function () {
+    Object.keys(cache).forEach(function (k) { if (cache[k].status === 'fail') delete cache[k]; });
+    draw();
+  });
+  el('elevRetry').addEventListener('click', function () {
+    elev = { status: 'none', key: null }; surf = { status: 'none', key: null };
+    scheduleElev(); scheduleSurf(); render();
+  });
+
+  function setCollapsed(c) {
+    state.collapsed = c;
+    el('body').hidden = c;
+    el('toggle').setAttribute('aria-expanded', String(!c));
+    save();
+  }
+  el('toggle').addEventListener('click', function () { setCollapsed(!state.collapsed); });
+
+  var snap = el('snap'), goal = el('goal'), pace = el('pace');
+  snap.checked = state.snap;
+  snap.addEventListener('change', function () {
+    state.snap = snap.checked;
+    Object.keys(cache).forEach(function (k) { if (cache[k].status === 'fail') delete cache[k]; });
+    draw(); save();
+  });
+  goal.value = state.goal;
+  goal.addEventListener('input', function () {
+    var v = parseFloat(String(goal.value).replace(',', '.'));
+    if (v > 0) { state.goal = v; render(); save(); }
+  });
+  pace.value = fmtPace(state.pace);
+  pace.addEventListener('input', function () { var v = parsePace(pace.value); if (v) { state.pace = v; render(); save(); } });
+  pace.addEventListener('blur', function () { pace.value = fmtPace(state.pace); });
+
+  // ---------- Min posisjon ----------
+  var gps = { watchId: null, follow: false, last: null, dot: null, ring: null };
+  var GPS_HELP = {
+    insecure: 'Posisjon virker bare når siden ligger på en sikker adresse (https). Denne kopien er åpnet uten https, så nettleseren sperrer GPS. Kartet og ruteplanleggingen virker som vanlig.',
+    unsupported: 'Denne nettleseren kan ikke lese posisjonen. Prøv Chrome eller Safari.',
+    denied: 'Siden får ikke lese posisjonen. Trykk på ikonet til venstre i adressefeltet, velg Posisjon og Tillat. Sjekk også at stedstjenester er slått på for nettleseren i telefonens innstillinger, og trykk Min posisjon på nytt.',
+    unavailable: 'Finner ikke posisjonen. Slå på stedstjenester (GPS) på telefonen og gå ut under åpen himmel. Siden prøver videre.',
+    timeout: 'Venter fortsatt på GPS-signal. Det går raskere ute under åpen himmel. Siden prøver videre.'
+  };
+  function gpsUI() {
+    var on = gps.watchId !== null;
+    el('gpsBtn').setAttribute('aria-pressed', String(on));
+    el('gpsLabel').textContent = on ? (gps.last ? 'Posisjon på' : 'Søker…') : 'Min posisjon';
+    el('gpsFollow').hidden = !on;
+    el('gpsStart').hidden = !on;
+    el('gpsFollow').setAttribute('aria-pressed', String(gps.follow));
+    el('gpsStart').disabled = !gps.last;
+    recUI();
+  }
+  function gpsOff() {
+    if (gps.watchId !== null) navigator.geolocation.clearWatch(gps.watchId);   // stopper GPS-en helt
+    gps.watchId = null; gps.follow = false; gps.last = null; gps.dot = null; gps.ring = null;
+    gpsLayer.clearLayers();
+    wakeOff();
+    if (rec && rec.running) { recPause(); toast('Opptaket er satt på pause fordi posisjon ble slått av. Trykk Fortsett for å gå videre.'); }
+    gpsUI();
+  }
+  function gpsOn() {
+    if (!('geolocation' in navigator)) return toast(GPS_HELP.unsupported);
+    if (!window.isSecureContext) return toast(GPS_HELP.insecure);
+    gps.follow = true;
+    gps.watchId = navigator.geolocation.watchPosition(onPos, onPosError, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    wakeOn();
+    gpsUI();
+  }
+  function onPos(pos) {
+    if (gps.watchId === null) return;
+    var ll = [pos.coords.latitude, pos.coords.longitude], acc = pos.coords.accuracy || 0, firstFix = !gps.last;
+    gps.last = ll;
+    if (!gps.dot) {
+      gps.ring = L.circle(ll, { radius: acc, color: gpsColor, weight: 1, opacity: .5, fillColor: gpsColor, fillOpacity: .12, interactive: false }).addTo(gpsLayer);
+      gps.dot = L.circleMarker(ll, { radius: 8, color: '#fff', weight: 3, fillColor: gpsColor, fillOpacity: 1, interactive: false }).addTo(gpsLayer);
+    } else {
+      gps.ring.setLatLng(ll).setRadius(acc);
+      gps.dot.setLatLng(ll);
+    }
+    if (gps.follow) { if (firstFix) map.setView(ll, Math.max(map.getZoom(), 16)); else map.panTo(ll); }
+    if (toastKind === 'gps') { el('toast').hidden = true; toastKind = ''; }
+    if (firstFix) gpsUI();
+    if (rec && rec.running) recPoint(ll, acc);
+  }
+  function onPosError(err) {
+    if (err.code === 1) { gpsOff(); toast(window.isSecureContext ? GPS_HELP.denied : GPS_HELP.insecure); }
+    else toast(err.code === 3 ? GPS_HELP.timeout : GPS_HELP.unavailable, 'gps');
+  }
+  el('gpsBtn').addEventListener('click', function () { if (gps.watchId !== null) gpsOff(); else gpsOn(); });
+  el('gpsFollow').addEventListener('click', function () {
+    gps.follow = !gps.follow;
+    if (gps.follow && gps.last) map.setView(gps.last, Math.max(map.getZoom(), 16));
+    gpsUI();
+  });
+  map.on('dragstart', function () { if (gps.follow) { gps.follow = false; gpsUI(); } });   // drar du i kartet, slutter det å følge
+  el('gpsStart').addEventListener('click', function () {
+    if (!gps.last) return;
+    var p = gps.last.slice();
+    mutate(function () {
+      if (!state.pts.length) { state.pts = [p]; return; }
+      var old = state.pts[0];
+      state.pts = state.pts.map(function (q) { return same(q, old) ? p.slice() : q; });
+    });
+  });
+
+  // ---------- Hold skjermen våken mens posisjon er på ----------
+  var wake = null;
+  function wakeOn() {
+    if (!('wakeLock' in navigator) || wake || document.visibilityState !== 'visible') return;
+    navigator.wakeLock.request('screen').then(function (lock) {
+      if (gps.watchId === null) { lock.release(); return; }
+      wake = lock;
+      lock.addEventListener('release', function () { if (wake === lock) wake = null; });
+    }).catch(function () {});
+  }
+  function wakeOff() { if (wake) { var w = wake; wake = null; w.release().catch(function () {}); } }
+
+  // ---------- Ta opp selve turen ----------
+  var rec = null, recTimer = null, recLine = null, hiddenAt = 0;
+  function recElapsed() { return rec.ms + (rec.running ? Date.now() - rec.resumed : 0); }
+  function clock(ms) {
+    var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+    return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (ss < 10 ? '0' : '') + ss;
+  }
+  function recSegments() {
+    var segs = [], cur = null;
+    rec.pts.forEach(function (q) { if (!cur || q[3]) { cur = []; segs.push(cur); } cur.push([q[0], q[1]]); });
+    return segs;
+  }
+  function recUI() {
+    el('recBar').hidden = !rec;
+    el('recBtn').hidden = gps.watchId === null || !!rec;
+    if (!rec) return;
+    var ms = recElapsed();
+    el('recBar').className = rec.done ? 'done' : rec.running ? '' : 'paused';
+    el('recTime').textContent = clock(ms);
+    el('recDist').textContent = km(rec.dist) + ' km';
+    el('recPace').textContent = rec.dist >= 50 ? fmtPace(Math.min(99, ms / 60000 / (rec.dist / 1000))) + ' /km' : '';
+    el('recPause').hidden = rec.done;
+    el('recStop').hidden = rec.done;
+    el('recGpx').hidden = !rec.done || rec.pts.length < 2;
+    el('recClose').hidden = !rec.done;
+    el('recPause').textContent = rec.running ? 'Pause' : 'Fortsett';
+  }
+  function recDraw() {
+    if (!recLine) recLine = L.polyline([], { color: gpsColor, weight: 5, opacity: .85, interactive: false }).addTo(map);
+    recLine.setLatLngs(rec ? recSegments() : []);
+  }
+  function recSave() {
+    if (rec) writeJSON(KEY_RUN, { pts: rec.pts, dist: rec.dist, ms: recElapsed(), started: rec.started, done: rec.done });
+  }
+  function recPoint(ll, acc) {
+    if (acc > 35) return;   // for unøyaktig til å måle med
+    var last = rec.pts[rec.pts.length - 1], q = [ll[0], ll[1], Date.now()];
+    if (!last || rec.newSeg) { if (rec.newSeg && last) q.push(1); rec.newSeg = false; rec.pts.push(q); }
+    else {
+      var d = map.distance([last[0], last[1]], ll);
+      if (d < 5) return;   // står du stille, teller ikke GPS-støyen som løping
+      rec.dist += d;
+      rec.pts.push(q);
+    }
+    recDraw(); recUI();
+    if (rec.pts.length % 10 === 0) recSave();
+  }
+  function recPause() { rec.ms = recElapsed(); rec.running = false; recSave(); recUI(); }
+  function recTick() { clearInterval(recTimer); recTimer = setInterval(recUI, 1000); }
+  el('recBtn').addEventListener('click', function () {
+    rec = { pts: [], dist: 0, ms: 0, running: true, resumed: Date.now(), started: Date.now(), done: false, newSeg: false };
+    if (gps.last) recPoint(gps.last, 0);
+    recDraw(); recTick(); recUI();
+    toast('Opptaket går. Hold skjermen på og siden åpen: låser du telefonen eller bytter app, stopper GPS-en til du er tilbake.');
+  });
+  el('recPause').addEventListener('click', function () {
+    if (rec.running) return recPause();
+    if (gps.watchId === null) gpsOn();
+    if (gps.watchId === null) return;
+    rec.running = true; rec.resumed = Date.now(); rec.newSeg = true;
+    if (gps.last) recPoint(gps.last, 0);   // ny del starter der du står nå, så hoppet fra pausen ikke telles
+    recUI();
+  });
+  el('recStop').addEventListener('click', function () {
+    rec.ms = recElapsed(); rec.running = false; rec.done = true;
+    clearInterval(recTimer);
+    recSave(); recUI();
+  });
+  el('recClose').addEventListener('click', function () {
+    rec = null;
+    try { localStorage.removeItem(KEY_RUN); } catch (e) {}
+    recDraw(); recUI();
+  });
+  el('recGpx').addEventListener('click', function () {
+    var day = new Date(rec.started).toISOString().slice(0, 10), name = 'Løpetur ' + day;
+    var s = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Trysil løpekart" xmlns="http://www.topografix.com/GPX/1/1">\n' +
+      '<metadata><name>' + name + '</name><time>' + new Date(rec.started).toISOString() + '</time></metadata>\n<trk><name>' + name + '</name><type>running</type>\n<trkseg>\n';
+    rec.pts.forEach(function (q, i) {
+      if (i && q[3]) s += '</trkseg>\n<trkseg>\n';
+      s += '<trkpt lat="' + q[0].toFixed(6) + '" lon="' + q[1].toFixed(6) + '"><time>' + new Date(q[2]).toISOString() + '</time></trkpt>\n';
+    });
+    download('lopetur-' + day + '.gpx', s + '</trkseg>\n</trk>\n</gpx>\n');
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); if (rec) recSave(); return; }
+    if (gps.watchId !== null) wakeOn();   // skjermlåsen slipper når siden skjules, så be om den på nytt
+    loadWx(); render();
+    if (rec && rec.running && hiddenAt && Date.now() - hiddenAt > 15000) {
+      toast('Siden var skjult i ' + fmtTime(Math.max(1, (Date.now() - hiddenAt) / 60000)) + '. Klokka gikk videre, men GPS-en sto. Strekningen i mellomtida blir målt i rett linje.');
+    }
+    hiddenAt = 0;
+  });
+
+  // ---------- Lagrede ruter ----------
+  function routes() { var r = readJSON(KEY_ROUTES); return Array.isArray(r) ? r : []; }
+  function renderRoutes() {
+    var list = el('routeList'), all = routes();
+    list.textContent = '';
+    el('routeEmpty').hidden = all.length > 0;
+    all.forEach(function (r) {
+      var li = document.createElement('li'), nm = document.createElement('div'), b = document.createElement('b'), meta = document.createElement('span');
+      nm.className = 'nm';
+      b.textContent = r.name;
+      meta.textContent = km(r.m || 0) + ' km · lagret ' + new Date(r.saved).toLocaleDateString('nb-NO');
+      nm.appendChild(b); nm.appendChild(meta);
+      var open = document.createElement('button'), del = document.createElement('button'), armed = null;
+      open.type = del.type = 'button';
+      open.textContent = 'Åpne'; del.textContent = 'Slett';
+      open.addEventListener('click', function () {
+        mutate(function () { state.pts = r.pts.map(function (p) { return p.slice(); }); state.name = r.name; });
+        if (typeof r.snap === 'boolean') { state.snap = r.snap; snap.checked = r.snap; draw(); save(); }
+        el('sheet').hidden = true;
+        fit();
+      });
+      del.addEventListener('click', function () {
+        if (!armed) { del.textContent = 'Sikker?'; armed = setTimeout(function () { armed = null; del.textContent = 'Slett'; }, 3000); return; }
+        clearTimeout(armed);
+        writeJSON(KEY_ROUTES, routes().filter(function (x) { return x.id !== r.id; }));
+        renderRoutes();
+      });
+      li.appendChild(nm); li.appendChild(open); li.appendChild(del);
+      list.appendChild(li);
+    });
+  }
+  function saveMsg(text) { el('saveMsg').textContent = text; el('saveMsg').hidden = !text; }
+  el('routesBtn').addEventListener('click', function () {
+    el('routeName').value = state.name;
+    el('saveBtn').disabled = state.pts.length < 2;
+    saveMsg(state.pts.length < 2 ? 'Tegn en rute med minst to punkter for å lagre den.' : '');
+    renderRoutes();
+    el('sheet').hidden = false;
+  });
+  el('sheetClose').addEventListener('click', function () { el('sheet').hidden = true; });
+  el('sheet').addEventListener('click', function (e) { if (e.target === el('sheet')) el('sheet').hidden = true; });
+  el('routeName').addEventListener('input', function () { saveMsg(''); });
+  el('saveForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = el('routeName').value.trim();
+    if (state.pts.length < 2) return;
+    if (!name) return saveMsg('Skriv et navn først.');
+    var all = routes().filter(function (x) { return x.name !== name; });   // samme navn overskriver
+    all.unshift({ id: Date.now().toString(36), name: name, pts: state.pts, snap: state.snap, m: Math.round(R.total), saved: new Date().toISOString() });
+    if (!writeJSON(KEY_ROUTES, all)) return saveMsg('Nettleseren lar ikke siden lagre. Privat modus kan sperre for dette.');
+    state.name = name; save();
+    saveMsg('');
+    renderRoutes();
+  });
+
+  // ---------- GPX ----------
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function buildGpx(name) {
+    var withEle = elev.status === 'ok' && elev.key === elevKey(), prev = null;
+    var s = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Trysil løpekart" xmlns="http://www.topografix.com/GPX/1/1">\n' +
+      '<metadata><name>' + esc(name) + '</name><time>' + new Date().toISOString() + '</time></metadata>\n' +
+      '<trk><name>' + esc(name) + '</name><type>running</type><trkseg>\n';
+    R.path.forEach(function (p, i) {
+      if (prev && same(prev, p)) return;
+      prev = p;
+      s += '<trkpt lat="' + p[0].toFixed(6) + '" lon="' + p[1].toFixed(6) + '">' + (withEle ? '<ele>' + zAt(R.cum[i]).toFixed(1) + '</ele>' : '') + '</trkpt>\n';
+    });
+    return s + '</trkseg></trk>\n</gpx>\n';
+  }
+  el('gpxBtn').addEventListener('click', function () {
+    if (R.path.length < 2) return;
+    var name = state.name || 'Trysil-rute ' + new Date().toISOString().slice(0, 10);
+    var file = (name.toLowerCase().replace(/[^a-z0-9æøå]+/g, '-').replace(/^-+|-+$/g, '') || 'rute') + '.gpx';
+    download(file, buildGpx(name));
+  });
+  function download(file, text) {
+    var url = URL.createObjectURL(new Blob([text], { type: 'application/gpx+xml' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = file;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    toast('Lastet ned ' + file + '. Finner du den ikke, se i Nedlastinger.');
+  }
+
+  // ---------- Del ruta som lenke ----------
+  var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  function encPts(pts) {
+    var out = '', prev = [0, 0];
+    pts.forEach(function (p) {
+      for (var k = 0; k < 2; k++) {
+        var v = Math.round(p[k] * 1e5), d = v - prev[k];
+        prev[k] = v;
+        d = d < 0 ? ~(d << 1) : d << 1;
+        while (d >= 32) { out += B64[32 | (d & 31)]; d >>>= 5; }
+        out += B64[d];
+      }
+    });
+    return out;
+  }
+  function decPts(str) {
+    var pts = [], prev = [0, 0], i = 0;
+    while (i < str.length) {
+      var p = [];
+      for (var k = 0; k < 2; k++) {
+        var shift = 0, res = 0, b;
+        do {
+          if (i >= str.length) return null;
+          b = B64.indexOf(str.charAt(i++));
+          if (b < 0) return null;
+          res |= (b & 31) << shift; shift += 5;
+        } while (b >= 32);
+        prev[k] += res & 1 ? ~(res >> 1) : res >> 1;
+        p.push(prev[k] / 1e5);
+      }
+      if (Math.abs(p[0]) > 90 || Math.abs(p[1]) > 180) return null;
+      pts.push(p);
+    }
+    return pts.length && pts.length <= 500 ? pts : null;
+  }
+  function shareUrl() { return location.href.split('#')[0] + '#rute=' + (state.snap ? 'v' : 'l') + encPts(state.pts); }
+  el('shareBtn').addEventListener('click', function () {
+    if (state.pts.length < 2) return;
+    if (location.protocol !== 'https:') return toast('Lenka virker først når siden ligger på en https-adresse. Denne kopien er åpnet som fil, så andre kan ikke åpne den.');
+    var url = shareUrl(), title = state.name || 'Løperute i Trysil';
+    if (navigator.share) {
+      navigator.share({ title: title, text: title + ', ' + km(R.total) + ' km', url: url }).catch(function () {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () { toast('Lenka er kopiert. Lim den inn der du vil dele ruta.'); },
+        function () { toast('Kopier lenka: ' + url); });
+    } else toast('Kopier lenka: ' + url);
+  });
+  function applyHash(first) {
+    var m = /^#rute=([vl])([A-Za-z0-9_-]+)$/.exec(location.hash);
+    if (!m) return false;
+    var pts = decPts(m[2]);
+    try { history.replaceState(null, '', location.href.split('#')[0]); } catch (e) {}
+    if (!pts) { toast('Lenka inneholder ikke en gyldig rute.'); return false; }
+    var had = state.pts.length > 0 && JSON.stringify(state.pts) !== JSON.stringify(pts);
+    if (had) pushHist();
+    state.pts = pts; state.snap = m[1] === 'v'; state.name = '';
+    el('snap').checked = state.snap;
+    toast('Åpnet delt rute.' + (had ? ' Angre henter tilbake ruta du hadde.' : ''));
+    if (!first) { refresh(); fit(); }
+    return true;
+  }
+  window.addEventListener('hashchange', function () { applyHash(false); });
+
+  // ---------- Start ----------
+  function fit() {
+    if (state.pts.length > 1) map.fitBounds(L.latLngBounds(state.pts).pad(0.25), { paddingBottomRight: [0, 160] });
+    else if (state.pts.length === 1) map.setView(state.pts[0], Math.max(map.getZoom(), 15));
+  }
+  var run = readJSON(KEY_RUN);
+  if (run && Array.isArray(run.pts) && run.pts.length) {
+    rec = { pts: run.pts, dist: run.dist || 0, ms: run.ms || 0, started: run.started || Date.now(), running: false, done: true };
+    if (!run.done) toast('Fant et opptak som ble avbrutt. Det ligger klart som ferdig tur.');
+    recDraw();
+  }
+  applyHash(true);
+  setCollapsed(state.collapsed);
+  gpsUI();
+  buildMarkers(); draw();
+  save();
+  fit();
+  loadWx();
+  setInterval(function () { loadWx(); render(); }, 5 * 60000);
+})();
+</script>
+</body>
+</html>
