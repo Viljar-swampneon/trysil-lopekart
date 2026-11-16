@@ -91,12 +91,12 @@
   #toast p { margin: 0; flex: 1; }
   #toast button { flex: none; }
 
-  #sheet { position: absolute; inset: 0; z-index: 1200; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; }
-  #sheet .card { width: 100%; max-width: 480px; max-height: 86%; overflow-y: auto; background: var(--panel); border-radius: 18px 18px 0 0;
+  #sheet, .overlay { position: absolute; inset: 0; z-index: 1200; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; }
+  #sheet .card, .overlay .card { width: 100%; max-width: 480px; max-height: 86%; overflow-y: auto; background: var(--panel); border-radius: 18px 18px 0 0;
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
-  @media (min-width: 700px) { #sheet { align-items: center; } #sheet .card { border-radius: 18px; } }
-  #sheet h2 { margin: 0; font-size: 20px; }
-  #sheet .top { display: flex; align-items: center; justify-content: space-between; }
+  @media (min-width: 700px) { #sheet, .overlay { align-items: center; } #sheet .card, .overlay .card { border-radius: 18px; } }
+  #sheet h2, .overlay h2 { margin: 0; font-size: 20px; }
+  #sheet .top, .overlay .top { display: flex; align-items: center; justify-content: space-between; }
   #saveForm { display: flex; gap: 8px; }
   #routeName { flex: 1; min-width: 0; min-height: 48px; font-size: 16px; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; }
   #saveMsg { font-size: 14px; color: var(--over); margin: 0; }
@@ -123,6 +123,55 @@
   #recBar .stats { flex: 1 1 150px; display: flex; align-items: baseline; gap: 12px; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #recTime { font-size: 24px; font-weight: 700; }
   #recBar .btns { display: flex; gap: 8px; margin-left: auto; }
+  #ask { z-index: 1300; }
+  #ask p { margin: 0; font-size: 16px; line-height: 1.45; }
+  .primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+  .note { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.45; }
+  .msg { font-size: 14px; margin: 0; line-height: 1.45; }
+  .msg.bad { color: var(--over); font-weight: 600; }
+  #gpsAcc { pointer-events: auto; align-self: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 6px 10px; font-size: 14px; font-weight: 700; box-shadow: 0 3px 12px rgba(0,0,0,.25); font-variant-numeric: tabular-nums; }
+  #gpsAcc.coarse { color: var(--over); }
+  .overlay form.line { display: flex; gap: 8px; }
+  .overlay input[type=text] { min-height: 48px; font-size: 16px; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; min-width: 0; }
+  .overlay form.line input { flex: 1; }
+  .overlay ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .res { width: 100%; text-align: left; font-weight: 500; padding: 8px 12px; }
+  .overlay fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .overlay legend { font-size: 13px; color: var(--muted); padding: 0; margin-bottom: 6px; }
+  #planForm { display: flex; flex-direction: column; gap: 14px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg label { flex: 1 1 auto; min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 0 12px; font-size: 14px; font-weight: 600;
+    border: 1px solid var(--line); border-radius: 10px; cursor: pointer; white-space: nowrap; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label:has(input:checked) { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+  .seg label:has(input:disabled) { opacity: .45; cursor: default; }
+  .seg label:has(input:focus-visible) { outline: 3px solid var(--gps); outline-offset: 1px; }
+  .lenrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .lenrow input[type=text] { width: 84px; text-align: center; }
+  .lenrow .seg { flex: 0 0 auto; }
+  .lenrow .seg label { flex: 0 0 auto; }
+  .lenrow .sp { flex: 1; }
+  .lenrow span { font-size: 14px; color: var(--muted); }
+  #planWork { display: flex; flex-direction: column; gap: 8px; }
+  #planWork .bar { border-radius: 3px; overflow: hidden; }
+  #planFill { height: 100%; width: 0; background: var(--route); transition: width .25s; }
+  .tur { width: 100%; display: flex; gap: 12px; align-items: center; text-align: left; padding: 10px 12px; font-weight: 400; }
+  .tur svg { width: 56px; height: 56px; flex: none; }
+  .tur polyline { fill: none; stroke: var(--route); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+  .tur div { min-width: 0; }
+  .tur b { display: block; font-size: 16px; overflow-wrap: anywhere; }
+  .tur span { display: block; font-size: 14px; line-height: 1.4; }
+  .tur .sub { color: var(--muted); }
+  .tur .warn { color: var(--over); font-weight: 600; }
+  .tur .tag { font-size: 12px; font-weight: 700; color: var(--good); }
+  #planCond { display: flex; flex-direction: column; gap: 6px; }
+  #condLine { font-weight: 600; }
+  #foreSet { margin-top: 4px; }
+  .tur .why { color: var(--good); }
+  .tur .unmet { color: var(--over); }
+  .pt.home { width: 26px; height: 26px; background: var(--gps); border-color: #fff; color: #fff; font: 700 13px/20px var(--font); text-align: center; }
+  .pt.pick { border-color: var(--gps); }
   .hit { display: flex; align-items: center; justify-content: center; }
   .pt { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid var(--route); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
   .pt.start { width: 24px; height: 24px; background: #1f7a4d; border-color: #fff; color: #fff; font: 700 12px/18px var(--font); text-align: center; }
@@ -133,13 +182,14 @@
 <body>
 <div id="map" aria-label="Kart over Trysil"></div>
 
-<div id="toast" role="status" hidden><p id="toastText"></p><button type="button" id="toastClose" class="small">Lukk</button></div>
+<div id="toast" role="status" hidden><p id="toastText"></p><button type="button" id="toastAct" class="small" hidden></button><button type="button" id="toastClose" class="small">Lukk</button></div>
 
 <div id="dock">
   <div id="fabs">
     <button type="button" id="recBtn" hidden>Ta opp tur</button>
     <button type="button" id="gpsStart" hidden disabled>Start ruta her</button>
     <button type="button" id="gpsFollow" aria-pressed="false" hidden>Følg meg</button>
+    <span id="gpsAcc" hidden></span>
     <button type="button" id="gpsBtn" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
       <span id="gpsLabel">Min posisjon</span>
@@ -170,9 +220,14 @@
     <div id="body">
       <p id="hint"></p>
       <div id="status" role="status"><span id="statusText"></span><button type="button" id="retryRoute" class="small" hidden>Prøv igjen</button></div>
+      <button type="button" id="planBtn" class="primary">Lag en tur til meg</button>
       <div class="row">
         <button type="button" id="backSame">Tilbake samme vei</button>
         <button type="button" id="closeLoop">Lukk runden</button>
+      </div>
+      <div class="row">
+        <button type="button" id="homeStartBtn">Start hjemme</button>
+        <button type="button" id="homeBtn">Hjem</button>
       </div>
       <div class="row">
         <button type="button" id="routesBtn">Ruter</button>
@@ -213,6 +268,109 @@
   </div>
 </div>
 
+<div id="homeSheet" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="homeTitle">
+    <div class="top"><h2 id="homeTitle">Hjem</h2><button type="button" id="homeClose">Lukk</button></div>
+    <p class="msg" id="homeNow"></p>
+    <div class="row" id="homeActions" hidden>
+      <button type="button" id="homeStart" class="primary">Start hjemme</button>
+      <button type="button" id="homeShow">Vis på kartet</button>
+      <button type="button" id="homeRemove">Fjern</button>
+    </div>
+    <form id="homeForm" class="line">
+      <input type="text" id="homeQuery" maxlength="80" placeholder="Storvegen 5 Trysil" aria-label="Søk etter adressen din" autocomplete="off">
+      <button type="submit" id="homeSearch">Søk</button>
+    </form>
+    <p class="msg" id="homeMsg" role="status"></p>
+    <ul id="homeResults"></ul>
+    <p class="note">Du kan også holde fingeren på kartet der du bor, eller høyreklikke på PC. Hjem lagres bare i denne nettleseren. Adressesøket sendes til Kartverket.</p>
+  </div>
+</div>
+
+<div id="planSheet" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="planTitle">
+    <div class="top"><h2 id="planTitle">Lag en tur til meg</h2><button type="button" id="planClose">Lukk</button></div>
+    <form id="planForm">
+      <div id="planCond">
+        <p class="msg" id="condLine"></p>
+        <p class="msg" id="bestLine"></p>
+        <label class="snap" for="planUse"><input type="checkbox" id="planUse" checked> Ta hensyn til vær og føre</label>
+        <fieldset id="foreSet">
+          <legend>Føre</legend>
+          <div class="seg">
+            <label><input type="radio" name="planFore" id="pf-auto" value="auto" checked><span id="pfAutoText">Auto</span></label>
+            <label><input type="radio" name="planFore" id="pf-bart" value="bart"><span>Bart</span></label>
+            <label><input type="radio" name="planFore" id="pf-vatt" value="vatt"><span>Vått</span></label>
+            <label><input type="radio" name="planFore" id="pf-sno" value="sno"><span>Snø og is</span></label>
+          </div>
+          <p class="note" id="foreNote" style="margin-top:6px"></p>
+        </fieldset>
+      </div>
+      <fieldset>
+        <legend>Start</legend>
+        <div class="seg">
+          <label><input type="radio" name="planStart" id="ps-hjem" value="hjem"><span>Hjem</span></label>
+          <label><input type="radio" name="planStart" id="ps-gps" value="gps"><span>Min posisjon</span></label>
+          <label><input type="radio" name="planStart" id="ps-punkt" value="punkt"><span>Punkt på kartet</span></label>
+        </div>
+        <p class="note" id="planStartMsg" style="margin-top:6px"></p>
+        <button type="button" id="planPick" class="small" style="margin-top:6px" hidden>Velg på kartet</button>
+      </fieldset>
+      <fieldset>
+        <legend>Nivå</legend>
+        <div class="seg">
+          <label><input type="radio" name="planLevel" id="pl-ny" value="ny" checked><span>Nybegynner</span></label>
+          <label><input type="radio" name="planLevel" id="pl-middels" value="middels"><span>Middels</span></label>
+          <label><input type="radio" name="planLevel" id="pl-erfaren" value="erfaren"><span>Erfaren</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Mål</legend>
+        <div class="seg">
+          <label><input type="radio" name="planGoal" id="pg-rolig" value="rolig" checked><span>Rolig tur</span></label>
+          <label><input type="radio" name="planGoal" id="pg-kondisjon" value="kondisjon"><span>Kondisjon</span></label>
+          <label><input type="radio" name="planGoal" id="pg-bakker" value="bakker"><span>Bakker</span></label>
+          <label><input type="radio" name="planGoal" id="pg-langtur" value="langtur"><span>Langtur</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Lengde og tempo</legend>
+        <div class="lenrow">
+          <input type="text" id="planLen" inputmode="decimal" autocomplete="off" aria-label="Lengde">
+          <div class="seg">
+            <label><input type="radio" name="planUnit" id="pu-km" value="km" checked><span>km</span></label>
+            <label><input type="radio" name="planUnit" id="pu-min" value="min"><span>min</span></label>
+          </div>
+          <span class="sp"></span>
+          <input type="text" id="planPace" inputmode="text" autocomplete="off" aria-label="Tempo i minutter per kilometer">
+          <span>min/km</span>
+        </div>
+        <p class="note" id="planHint" style="margin-top:6px"></p>
+      </fieldset>
+      <button type="submit" id="planGo" class="primary">Lag tre forslag</button>
+    </form>
+    <div id="planWork" hidden>
+      <div class="bar" aria-hidden="true"><div id="planFill"></div></div>
+      <p class="msg" id="planProgress" role="status"></p>
+      <p class="note">Rutetjenestene er gratis og tillater ett kall i sekundet, så dette tar gjerne 20–30 sekunder.</p>
+      <button type="button" id="planCancel">Avbryt</button>
+    </div>
+    <p class="msg bad" id="planMsg" role="alert" hidden></p>
+    <p class="msg" id="planTips" hidden></p>
+    <ul id="planCards"></ul>
+  </div>
+</div>
+
+<div id="ask" class="overlay" hidden>
+  <div class="card" role="alertdialog" aria-modal="true" aria-labelledby="askText">
+    <p id="askText"></p>
+    <div class="row">
+      <button type="button" id="askNo">Avbryt</button>
+      <button type="button" id="askYes" class="primary">Ja</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 (function () {
@@ -220,9 +378,13 @@
   var KEY = 'trysil-lopekart-v2', KEY_OLD = 'trysil-lopekart-v1', KEY_ROUTES = 'trysil-lopekart-ruter-v1';
   var ROUTER = 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/';
   var ELEV = 'https://ws.geonorge.no/hoydedata/v1/punkt';
-  var VALHALLA = 'https://valhalla1.openstreetmap.de/trace_attributes';
+  var VALHALLA = 'https://valhalla1.openstreetmap.de/trace_attributes', VALHALLA_ROUTE = 'https://valhalla1.openstreetmap.de/route';
   var MET = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
   var KEY_RUN = 'trysil-lopekart-tur-v1', TRYSIL = [61.3149, 12.2632];
+  var KEY_HOME = 'trysil-lopekart-hjem-v1', KEY_PLAN = 'trysil-lopekart-turvalg-v1';
+  var ADR = 'https://ws.geonorge.no/adresser/v1/sok';
+  var SNOW = 'https://api.open-meteo.com/v1/forecast';   // snødybde fra værmodell, uten nøkkel
+  var OVERPASS = ['https://overpass.openstreetmap.fr/api/interpreter', 'https://overpass-api.de/api/interpreter'];   // kartdata om veier, lys og skiløyper
   var el = function (id) { return document.getElementById(id); };
 
   function readJSON(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
@@ -241,11 +403,22 @@
   }
   if (state.collapsed === null) state.collapsed = window.innerWidth < 700;
   var hist = [], cache = {}, dragging = false;
+  if (saved && saved.legs && typeof saved.legs === 'object') {
+    Object.keys(saved.legs).forEach(function (k) { if (Array.isArray(saved.legs[k]) && saved.legs[k].length > 1) cache[k] = { status: 'ok', coords: saved.legs[k] }; });
+  }
   var R = { path: [], cum: [0], total: 0, pending: 0, failed: 0 };
   var elev = { status: 'none', key: null }, elevTimer = null;
   var surf = { status: 'none', key: null }, surfTimer = null;
   var wx = { status: 'none', at: 0, lat: null, lon: null, text: '' };
-  function save() { writeJSON(KEY, state); }
+  function save() {
+    var legs = {};
+    for (var i = 1; i < state.pts.length; i++) {
+      var k = keyOf(state.pts[i - 1], state.pts[i]), e = cache[k];
+      if (e && e.status === 'ok' && e.coords.length < 3000) legs[k] = e.coords.map(function (q) { return [+q[0].toFixed(6), +q[1].toFixed(6)]; });
+    }
+    state.legs = legs;
+    writeJSON(KEY, state);
+  }
 
   // ---------- Format ----------
   function km(m) { return (m / 1000).toFixed(2).replace('.', ','); }
@@ -288,16 +461,64 @@
   var markerLayer = L.layerGroup().addTo(map);
 
   // ---------- Melding øverst ----------
-  var toastKind = '';
-  function toast(text, kind) { toastKind = kind || ''; el('toastText').textContent = text; el('toast').hidden = false; }
+  var toastKind = '', toastFn = null;
+  function toast(text, kind, act) {
+    toastKind = kind || ''; toastFn = act ? act.fn : null;
+    el('toastText').textContent = text;
+    el('toastAct').hidden = !act;
+    if (act) el('toastAct').textContent = act.label;
+    el('toast').hidden = false;
+  }
   el('toastClose').addEventListener('click', function () { el('toast').hidden = true; });
+  el('toastAct').addEventListener('click', function () { var f = toastFn; el('toast').hidden = true; if (f) f(); });
+
+  // ---------- Spørsmål før noe usikkert brukes ----------
+  var askFn = null;
+  function ask(text, yes, fn) { askFn = fn; el('askText').textContent = text; el('askYes').textContent = yes; el('ask').hidden = false; el('askYes').focus(); }
+  el('askNo').addEventListener('click', function () { askFn = null; el('ask').hidden = true; });
+  el('askYes').addEventListener('click', function () { var f = askFn; askFn = null; el('ask').hidden = true; if (f) f(); });
+
+  // ---------- Kø mot rute- og underlagstjenesten: vilkårene deres sier maks ett kall i sekundet ----------
+  // <router-queue>
+  function makeQueue(gapMs) {   // slipper gjennom ett kall om gangen, med minst gapMs mellom starten på hvert
+    var q = { next: 0, waiting: [], timer: null };
+    function pump() {
+      if (q.timer || !q.waiting.length) return;
+      var wait = q.next - Date.now();
+      if (wait > 0) { q.timer = setTimeout(function () { q.timer = null; pump(); }, wait); return; }
+      q.next = Date.now() + gapMs;
+      q.waiting.shift()();
+      pump();
+    }
+    return {
+      take: function () { return new Promise(function (go) { q.waiting.push(go); pump(); }); },
+      backOff: function (ms) { q.next = Math.max(q.next, Date.now() + ms); }
+    };
+  }
+  var routeQueue = makeQueue(1100), surfQueue = makeQueue(1100);
+  function routerJSON(url) {
+    var tries = 0;
+    function attempt() {
+      return routeQueue.take().then(function () {
+        var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 12000);
+        return fetch(url, { signal: ctrl.signal }).then(function (r) {
+          clearTimeout(timer);
+          if (r.status === 429 && tries++ < 2) { routeQueue.backOff(3000); return attempt(); }   // for tett: vent og prøv igjen
+          if (r.status === 429 || r.status >= 500) throw new Error('HTTP ' + r.status);
+          return r.json();
+        });
+      });
+    }
+    return attempt();
+  }
+  // </router-queue>
 
   // ---------- Ruting: én strekning mellom to punkter ----------
   function keyOf(a, b) { return a[0].toFixed(5) + ',' + a[1].toFixed(5) + '|' + b[0].toFixed(5) + ',' + b[1].toFixed(5); }
   function fetchLeg(k, a, b) {
     cache[k] = { status: 'pending' };
     var url = ROUTER + a[1] + ',' + a[0] + ';' + b[1] + ',' + b[0] + '?alternatives=false&steps=false&geometries=geojson&overview=full';
-    fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+    routerJSON(url).then(function (j) {
       if (j.code !== 'Ok' || !j.routes || !j.routes.length) throw new Error('Ingen rute');
       var c = j.routes[0].geometry.coordinates.map(function (p) { return [p[1], p[0]]; });
       if (c.length < 2) throw new Error('Ingen rute');
@@ -367,7 +588,7 @@
         next += 1000;
       }
     }
-    if (!dragging) { scheduleElev(); scheduleSurf(); }
+    if (!dragging) { scheduleElev(); scheduleSurf(); if (!pending && state.snap && path.length) save(); }
     render();
   }
 
@@ -399,9 +620,8 @@
         });
       });
   }
-  function loadElev(key) {
-    var path = R.path, cum = R.cum, total = R.total;
-    var step = Math.max(20, total / 199), samples = [], i = 1, d;
+  function elevFor(path, cum, total, maxN) {
+    var step = Math.max(20, total / maxN), samples = [], i = 1, d;
     for (d = 0; d < total; d += step) {
       while (i < cum.length - 1 && cum[i] < d) i++;
       var seg = cum[i] - cum[i - 1], t = seg > 0 ? (d - cum[i - 1]) / seg : 0, a = path[i - 1], b = path[i];
@@ -410,8 +630,7 @@
     samples.push({ d: total, p: path[path.length - 1] });
     var batches = [];
     for (i = 0; i < samples.length; i += 50) batches.push(samples.slice(i, i + 50));   // tjenesten tar maks 50 punkter per kall
-    Promise.all(batches.map(fetchBatch)).then(function (parts) {
-      if (elev.key !== key) return;
+    return Promise.all(batches.map(fetchBatch)).then(function (parts) {
       var zs = [].concat.apply([], parts), up = 0, down = 0, ref = zs[0], min = zs[0], max = zs[0];
       zs.forEach(function (z, n) {
         samples[n].z = z;
@@ -420,7 +639,14 @@
         var diff = z - ref;   // teller bare endringer på minst 2 m, så småhumper og målestøy ikke blåser opp tallet
         if (diff >= 2) { up += diff; ref = z; } else if (diff <= -2) { down -= diff; ref = z; }
       });
-      elev = { status: 'ok', key: key, samples: samples, up: up, down: down, min: min, max: max, total: total };
+      return { samples: samples, up: up, down: down, min: min, max: max, total: total };
+    });
+  }
+  function loadElev(key) {
+    elevFor(R.path, R.cum, R.total, 199).then(function (e) {
+      if (elev.key !== key) return;
+      e.status = 'ok'; e.key = key;
+      elev = e;
       render();
     }).catch(function () {
       if (elev.key !== key) return;
@@ -446,20 +672,20 @@
     surf = { status: 'loading', key: key };
     surfTimer = setTimeout(function () { loadSurf(key); }, 900);
   }
-  function loadSurf(key) {
-    var shape = [], prev = null, total = R.total;
-    R.path.forEach(function (p) {
+  function surfFor(path, total) {
+    var shape = [], prev = null;
+    path.forEach(function (p) {
       if (prev && same(prev, p)) return;
       prev = p;
       shape.push({ lat: +p[0].toFixed(6), lon: +p[1].toFixed(6) });
     });
-    var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 12000);
-    fetch(VALHALLA, { method: 'POST', signal: ctrl.signal, body: JSON.stringify({ shape: shape, costing: 'pedestrian', shape_match: 'map_snap',
-      filters: { attributes: ['edge.surface', 'edge.length'], action: 'include' } }) })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    return surfQueue.take().then(function () {
+      var ctrl = new AbortController();
+      setTimeout(function () { ctrl.abort(); }, 12000);
+      return fetch(VALHALLA, { method: 'POST', signal: ctrl.signal, body: JSON.stringify({ shape: shape, costing: 'pedestrian', shape_match: 'map_snap',
+        filters: { attributes: ['edge.surface', 'edge.length'], action: 'include' } }) });
+    }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (j) {
-        clearTimeout(timer);
-        if (surf.key !== key) return;
         var sum = { asfalt: 0, grus: 0, sti: 0 }, all = 0;
         (j.edges || []).forEach(function (e) {
           var c = SURF[e.surface];
@@ -467,13 +693,25 @@
           sum[c] += e.length; all += e.length;
         });
         if (!(all > 0)) throw new Error('Ingen treff');
-        surf = { status: 'ok', key: key, parts: { asfalt: sum.asfalt / all * total, grus: sum.grus / all * total, sti: sum.sti / all * total }, total: total };
-        render();
-      }).catch(function () {
-        if (surf.key !== key) return;
-        surf = { status: 'fail', key: key };
-        render();
+        return { asfalt: sum.asfalt / all * total, grus: sum.grus / all * total, sti: sum.sti / all * total };
       });
+  }
+  function loadSurf(key) {
+    var total = R.total;
+    surfFor(R.path, total).then(function (parts) {
+      if (surf.key !== key) return;
+      surf = { status: 'ok', key: key, parts: parts, total: total };
+      render();
+    }).catch(function () {
+      if (surf.key !== key) return;
+      surf = { status: 'fail', key: key };
+      render();
+    });
+  }
+  function surfLine(parts) {
+    var bits = [];
+    ['asfalt', 'grus', 'sti'].forEach(function (k) { if (parts[k] >= 50) bits.push(k + ' ' + (parts[k] / 1000).toFixed(1).replace('.', ',') + ' km'); });
+    return bits.join(' · ');
   }
 
   // ---------- Sol (regnes ut lokalt) og vær (MET Norge) ----------
@@ -543,12 +781,37 @@
         if (typeof d.wind_speed === 'number') parts.push('vind ' + Math.round(d.wind_speed) + ' m/s');
         if (h && h.details && typeof h.details.precipitation_amount === 'number')
           parts.push(h.details.precipitation_amount > 0 ? num(h.details.precipitation_amount) + ' mm neste time' : 'ingen nedbør neste time');
-        wx = { status: 'ok', at: Date.now(), lat: lat, lon: lon, text: 'Nå ' + parts.join(' · ') };
-        render();
+        var hours = [];
+        ts.forEach(function (x) {
+          var dd = x.data && x.data.instant && x.data.instant.details, n1 = x.data && x.data.next_1_hours;
+          if (!dd || !n1) return;
+          hours.push({ t: new Date(x.time).getTime(), temp: dd.air_temperature, wind: dd.wind_speed, from: dd.wind_from_direction,
+            precip: n1.details && typeof n1.details.precipitation_amount === 'number' ? n1.details.precipitation_amount : 0, symbol: n1.summary ? n1.summary.symbol_code : '' });
+        });
+        wx = { status: 'ok', at: Date.now(), lat: lat, lon: lon, text: 'Nå ' + parts.join(' · '), hours: hours,
+          now: { temp: d.air_temperature, wind: d.wind_speed, from: d.wind_from_direction,
+            precip: h && h.details && typeof h.details.precipitation_amount === 'number' ? h.details.precipitation_amount : 0, symbol: h && h.summary ? h.summary.symbol_code : '' } };
+        render(); condUI();
       }).catch(function () {
         wx = { status: 'fail', at: Date.now(), lat: lat, lon: lon, text: '' };
-        render();
+        render(); condUI();
       });
+  }
+  var snow = { status: 'none', at: 0, depth: null };
+  function loadSnow() {   // ett kall, og svaret brukes i en time
+    var p = refPoint(), now = Date.now();
+    if (snow.status === 'loading' || (snow.status !== 'none' && now - snow.at < (snow.status === 'ok' ? 60 : 5) * 60000)) return;
+    snow = { status: 'loading', at: now, depth: null };
+    var ctrl = new AbortController();
+    setTimeout(function () { ctrl.abort(); }, 10000);
+    fetch(SNOW + '?latitude=' + p[0].toFixed(2) + '&longitude=' + p[1].toFixed(2) + '&current=snow_depth', { signal: ctrl.signal })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) {
+        var dpt = j && j.current ? j.current.snow_depth : null;
+        if (typeof dpt !== 'number' || !isFinite(dpt)) throw new Error('Mangler snødybde');
+        snow = { status: 'ok', at: Date.now(), depth: dpt };
+        condUI();
+      }).catch(function () { snow = { status: 'fail', at: Date.now(), depth: null }; condUI(); });
   }
 
   // ---------- Vis tall og knapper ----------
@@ -628,7 +891,18 @@
   }
 
   // ---------- Kart-trykk og knapper ----------
+  var holdAt = 0;
+  map.on('contextmenu', function (e) {
+    holdAt = Date.now();
+    var ll = e.latlng;
+    ask('Vil du sette Hjem her? Punktet lagres bare i denne nettleseren.', 'Sett Hjem', function () {
+      setHome({ lat: ll.lat, lng: ll.lng, label: 'punktet du valgte på kartet' });
+      toast('Hjem er lagret i denne nettleseren.');
+    });
+  });
   map.on('click', function (e) {
+    if (Date.now() - holdAt < 700) return;   // slipp etter langt trykk skal ikke bli et rutepunkt
+    if (plan.picking) return planPicked([e.latlng.lat, e.latlng.lng]);
     var p = [e.latlng.lat, e.latlng.lng], n = state.pts.length;
     if (n && map.distance(state.pts[n - 1], p) < 2) return;   // dobbelttrykk på samme sted
     mutate(function () { state.pts.push(p); });
@@ -676,7 +950,11 @@
   pace.addEventListener('blur', function () { pace.value = fmtPace(state.pace); });
 
   // ---------- Min posisjon ----------
-  var gps = { watchId: null, follow: false, last: null, dot: null, ring: null };
+  var gps = { watchId: null, follow: false, last: null, dot: null, ring: null, acc: 0, coarseOk: false, centered: false, told: false };
+  var GREY = '#7a8580';
+  function accText(m) { return m < 1000 ? '± ' + Math.round(m) + ' m' : '± ' + (m / 1000).toFixed(1).replace('.', ',') + ' km'; }
+  function isCoarse() { return gps.acc > 100; }   // dårligere enn 100 m regnes som omtrentlig
+  function following() { return gps.follow && (!isCoarse() || gps.coarseOk); }
   var GPS_HELP = {
     insecure: 'Posisjon virker bare når siden ligger på en sikker adresse (https). Denne kopien er åpnet uten https, så nettleseren sperrer GPS. Kartet og ruteplanleggingen virker som vanlig.',
     unsupported: 'Denne nettleseren kan ikke lese posisjonen. Prøv Chrome eller Safari.',
@@ -690,13 +968,17 @@
     el('gpsLabel').textContent = on ? (gps.last ? 'Posisjon på' : 'Søker…') : 'Min posisjon';
     el('gpsFollow').hidden = !on;
     el('gpsStart').hidden = !on;
-    el('gpsFollow').setAttribute('aria-pressed', String(gps.follow));
+    el('gpsFollow').setAttribute('aria-pressed', String(following()));
     el('gpsStart').disabled = !gps.last;
+    var chip = el('gpsAcc');
+    chip.hidden = !on || !gps.last;
+    if (gps.last) { chip.textContent = accText(gps.acc); chip.className = isCoarse() ? 'coarse' : ''; chip.title = isCoarse() ? 'Omtrentlig posisjon' : 'Nøyaktighet'; }
     recUI();
   }
   function gpsOff() {
     if (gps.watchId !== null) navigator.geolocation.clearWatch(gps.watchId);   // stopper GPS-en helt
     gps.watchId = null; gps.follow = false; gps.last = null; gps.dot = null; gps.ring = null;
+    gps.acc = 0; gps.coarseOk = false; gps.centered = false; gps.told = false;
     gpsLayer.clearLayers();
     wakeOff();
     if (rec && rec.running) { recPause(); toast('Opptaket er satt på pause fordi posisjon ble slått av. Trykk Fortsett for å gå videre.'); }
@@ -706,24 +988,31 @@
     if (!('geolocation' in navigator)) return toast(GPS_HELP.unsupported);
     if (!window.isSecureContext) return toast(GPS_HELP.insecure);
     gps.follow = true;
-    gps.watchId = navigator.geolocation.watchPosition(onPos, onPosError, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    gps.watchId = navigator.geolocation.watchPosition(onPos, onPosError, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });   // maximumAge 0: aldri en gammel, lagret posisjon
     wakeOn();
     gpsUI();
   }
   function onPos(pos) {
     if (gps.watchId === null) return;
     var ll = [pos.coords.latitude, pos.coords.longitude], acc = pos.coords.accuracy || 0, firstFix = !gps.last;
-    gps.last = ll;
+    gps.last = ll; gps.acc = acc;
+    var coarse = isCoarse(), col = coarse ? GREY : gpsColor;
     if (!gps.dot) {
-      gps.ring = L.circle(ll, { radius: acc, color: gpsColor, weight: 1, opacity: .5, fillColor: gpsColor, fillOpacity: .12, interactive: false }).addTo(gpsLayer);
-      gps.dot = L.circleMarker(ll, { radius: 8, color: '#fff', weight: 3, fillColor: gpsColor, fillOpacity: 1, interactive: false }).addTo(gpsLayer);
+      gps.ring = L.circle(ll, { radius: acc, color: col, weight: 1, opacity: .6, fillColor: col, fillOpacity: .12, interactive: false }).addTo(gpsLayer);
+      gps.dot = L.circleMarker(ll, { radius: 8, color: '#fff', weight: 3, fillColor: col, fillOpacity: 1, interactive: false }).addTo(gpsLayer);
     } else {
-      gps.ring.setLatLng(ll).setRadius(acc);
-      gps.dot.setLatLng(ll);
+      gps.ring.setLatLng(ll).setRadius(acc).setStyle({ color: col, fillColor: col });
+      gps.dot.setLatLng(ll).setStyle({ fillColor: col });
     }
-    if (gps.follow) { if (firstFix) map.setView(ll, Math.max(map.getZoom(), 16)); else map.panTo(ll); }
-    if (toastKind === 'gps') { el('toast').hidden = true; toastKind = ''; }
-    if (firstFix) gpsUI();
+    if (following()) {
+      if (!gps.centered) { gps.centered = true; map.setView(ll, Math.max(map.getZoom(), 16)); } else map.panTo(ll);
+    } else if (firstFix && coarse) map.fitBounds(gps.ring.getBounds(), { maxZoom: 15, paddingBottomRight: [0, 120] });   // vis hele usikkerheten, ikke en falsk presis prikk
+    if (toastKind === 'gps' || (!coarse && toastKind === 'coarse')) { el('toast').hidden = true; toastKind = ''; }
+    if (coarse && !gps.told) {
+      gps.told = true;
+      toast('Omtrentlig posisjon. PC-er har sjelden GPS, bruk telefonen eller sett Hjem.', 'coarse', { label: 'Sett Hjem', fn: openHome });
+    }
+    gpsUI();
     if (rec && rec.running) recPoint(ll, acc);
   }
   function onPosError(err) {
@@ -732,19 +1021,979 @@
   }
   el('gpsBtn').addEventListener('click', function () { if (gps.watchId !== null) gpsOff(); else gpsOn(); });
   el('gpsFollow').addEventListener('click', function () {
-    gps.follow = !gps.follow;
-    if (gps.follow && gps.last) map.setView(gps.last, Math.max(map.getZoom(), 16));
-    gpsUI();
+    if (following()) { gps.follow = false; gpsUI(); return; }
+    function go() {
+      gps.follow = true;
+      if (isCoarse()) gps.coarseOk = true;
+      if (gps.last) { gps.centered = true; map.setView(gps.last, Math.max(map.getZoom(), 16)); }
+      gpsUI();
+    }
+    if (gps.last && isCoarse() && !gps.coarseOk) ask('Posisjonen er omtrentlig (' + accText(gps.acc) + '). Vil du at kartet skal følge den likevel?', 'Følg likevel', go);
+    else go();
   });
   map.on('dragstart', function () { if (gps.follow) { gps.follow = false; gpsUI(); } });   // drar du i kartet, slutter det å følge
-  el('gpsStart').addEventListener('click', function () {
-    if (!gps.last) return;
-    var p = gps.last.slice();
+  function startAt(p) {
     mutate(function () {
       if (!state.pts.length) { state.pts = [p]; return; }
       var old = state.pts[0];
       state.pts = state.pts.map(function (q) { return same(q, old) ? p.slice() : q; });
     });
+  }
+  el('gpsStart').addEventListener('click', function () {
+    if (!gps.last) return;
+    var p = gps.last.slice();
+    if (isCoarse()) ask('Posisjonen er omtrentlig (' + accText(gps.acc) + '). Vil du starte ruta der likevel?', 'Start her likevel', function () { startAt(p); });
+    else startAt(p);
+  });
+
+  // ---------- Hjem (lagres bare i denne nettleseren) ----------
+  var home = readJSON(KEY_HOME);
+  if (!home || !isFinite(home.lat) || !isFinite(home.lng)) home = null;
+  var homeLayer = L.layerGroup().addTo(map);
+  function drawHome() {
+    homeLayer.clearLayers();
+    if (!home) return;
+    L.marker([home.lat, home.lng], { interactive: false, keyboard: false,
+      icon: L.divIcon({ className: 'hit', html: '<div class="pt home">H</div>', iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(homeLayer);
+  }
+  function homeUI() {
+    el('homeNow').textContent = home ? 'Hjem er satt: ' + home.label + '.' : 'Hjem er ikke satt ennå. Søk opp adressen din under.';
+    el('homeActions').hidden = !home;
+  }
+  function setHome(h) {
+    home = h;
+    if (!writeJSON(KEY_HOME, h)) toast('Nettleseren lar ikke siden lagre Hjem. Privat modus kan sperre for dette.');
+    drawHome(); homeUI();
+  }
+  function homeMsg(text, bad) { el('homeMsg').textContent = text; el('homeMsg').className = 'msg' + (bad ? ' bad' : ''); }
+  function openHome(text) {
+    homeUI();
+    homeMsg(typeof text === 'string' ? text : '');
+    el('homeResults').textContent = '';
+    el('homeSheet').hidden = false;
+  }
+  function startHome() {
+    if (!home) return openHome('Sett Hjem først, så kan du starte ruta der.');
+    el('homeSheet').hidden = true;
+    startAt([home.lat, home.lng]);
+    if (state.pts.length < 2) map.setView([home.lat, home.lng], Math.max(map.getZoom(), 15));
+  }
+  el('homeBtn').addEventListener('click', function () { openHome(); });
+  el('homeStartBtn').addEventListener('click', startHome);
+  el('homeStart').addEventListener('click', startHome);
+  el('homeClose').addEventListener('click', function () { el('homeSheet').hidden = true; });
+  el('homeSheet').addEventListener('click', function (e) { if (e.target === el('homeSheet')) el('homeSheet').hidden = true; });
+  el('homeShow').addEventListener('click', function () { el('homeSheet').hidden = true; map.setView([home.lat, home.lng], Math.max(map.getZoom(), 16)); });
+  el('homeRemove').addEventListener('click', function () {
+    ask('Vil du fjerne Hjem fra denne nettleseren?', 'Fjern', function () {
+      home = null;
+      try { localStorage.removeItem(KEY_HOME); } catch (e) {}
+      drawHome(); homeUI(); homeMsg('Hjem er fjernet.');
+    });
+  });
+  function adrSearch(q, fuzzy) {
+    var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 10000);
+    return fetch(ADR + '?sok=' + encodeURIComponent(q) + '&utkoordsys=4258&treffPerSide=6' + (fuzzy ? '&fuzzy=true' : ''), { signal: ctrl.signal })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) { clearTimeout(timer); if (!j || !Array.isArray(j.adresser)) throw new Error('Uventet svar'); return j.adresser; });
+  }
+  function cap(t) { t = String(t || '').toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
+  el('homeForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var q = el('homeQuery').value.replace(/,/g, ' ').replace(/\s+/g, ' ').trim(), list = el('homeResults');
+    list.textContent = '';
+    if (q.length < 3) return homeMsg('Skriv gatenavn og nummer, for eksempel Storvegen 5 Trysil.', true);
+    homeMsg('Søker…');
+    adrSearch(q, false).then(function (a) { return a.length ? a : adrSearch(q, true); }).then(function (a) {
+      a = a.filter(function (x) { return x.representasjonspunkt && isFinite(x.representasjonspunkt.lat) && isFinite(x.representasjonspunkt.lon); });
+      if (!a.length) return homeMsg('Fant ingen adresse. Prøv gatenavn og nummer, for eksempel Storvegen 5 Trysil.', true);
+      homeMsg('Velg riktig adresse:');
+      a.forEach(function (x) {
+        var li = document.createElement('li'), b = document.createElement('button');
+        var label = x.adressetekst + ', ' + (x.postnummer || '') + ' ' + cap(x.poststed);
+        b.type = 'button'; b.className = 'res'; b.textContent = label;
+        b.addEventListener('click', function () {
+          setHome({ lat: x.representasjonspunkt.lat, lng: x.representasjonspunkt.lon, label: label });
+          list.textContent = '';
+          homeMsg('Hjem er lagret i denne nettleseren.');
+        });
+        li.appendChild(b); list.appendChild(li);
+      });
+    }).catch(function () {
+      homeMsg('Adressesøket svarer ikke akkurat nå. Hold fingeren på kartet der du bor for å sette Hjem der i stedet.', true);
+    });
+  });
+
+  // ---------- Turforslag: ren geometri (ingen nettkall her) ----------
+  // <plan-pure>
+  var Plan = (function () {
+    var RAD = Math.PI / 180;
+    function dist(a, b) {
+      var dLat = (b[0] - a[0]) * RAD, dLon = (b[1] - a[1]) * RAD;
+      var h = Math.pow(Math.sin(dLat / 2), 2) + Math.cos(a[0] * RAD) * Math.cos(b[0] * RAD) * Math.pow(Math.sin(dLon / 2), 2);
+      return 12742000 * Math.asin(Math.min(1, Math.sqrt(h)));
+    }
+    function dest(p, bearing, m) {   // punktet m meter fra p i en gitt himmelretning
+      var d = m / 6371000, br = bearing * RAD, la = p[0] * RAD, lo = p[1] * RAD;
+      var la2 = Math.asin(Math.sin(la) * Math.cos(d) + Math.cos(la) * Math.sin(d) * Math.cos(br));
+      var lo2 = lo + Math.atan2(Math.sin(br) * Math.sin(d) * Math.cos(la), Math.cos(d) - Math.sin(la) * Math.sin(la2));
+      return [la2 / RAD, lo2 / RAD];
+    }
+    function cumOf(path) {
+      var cum = [0];
+      for (var i = 1; i < path.length; i++) cum.push(cum[i - 1] + dist(path[i - 1], path[i]));
+      return cum;
+    }
+    function sample(path, cum, step, ref) {   // punkter med fast avstand, i meter fra ref
+      var kx = 111320 * Math.cos(ref[0] * RAD), ky = 110540, out = [], i = 1, total = cum[cum.length - 1];
+      for (var d = 0; d <= total; d += step) {
+        while (i < cum.length - 1 && cum[i] < d) i++;
+        var seg = cum[i] - cum[i - 1], t = seg > 0 ? (d - cum[i - 1]) / seg : 0, a = path[i - 1], b = path[i];
+        out.push({ d: d, x: (a[1] + (b[1] - a[1]) * t - ref[1]) * kx, y: (a[0] + (b[0] - a[0]) * t - ref[0]) * ky });
+      }
+      return out;
+    }
+    function grid(S, cell) {
+      var g = {};
+      S.forEach(function (q, i) { var k = Math.floor(q.x / cell) + ',' + Math.floor(q.y / cell); (g[k] || (g[k] = [])).push(i); });
+      return g;
+    }
+    function near(g, cell, q, fn) {
+      var cx = Math.floor(q.x / cell), cy = Math.floor(q.y / cell);
+      for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) {
+        var l = g[(cx + dx) + ',' + (cy + dy)];
+        if (l) for (var n = 0; n < l.length; n++) if (fn(l[n])) return true;
+      }
+      return false;
+    }
+    function hyp(a, b) { return Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)); }
+    function repeated(path, cum) {   // meter av runden som går samme vei to ganger. 18 m regnes som samme vei, så fortau langs veien telles også
+      var step = 10, S = sample(path, cum, step, path[0]), g = grid(S, 20), total = cum[cum.length - 1], hits = 0;
+      S.forEach(function (q, i) {
+        if (near(g, 20, q, function (j) {
+          if (Math.abs(i - j) * step <= 80 || hyp(S[j], q) >= 18) return false;
+          var lo = Math.min(S[i].d, S[j].d), hi = Math.max(S[i].d, S[j].d);
+          return !(lo < 25 && total - hi < 25);   // start og mål ligger på samme sted, det er ikke en gjentakelse
+        })) hits++;
+      });
+      return hits * step / 2;
+    }
+    function similar(pathA, cumA, pathB, cumB) {   // andel av A som følger B
+      var ref = pathA[0], A = sample(pathA, cumA, 20, ref), B = sample(pathB, cumB, 20, ref), g = grid(B, 30), hits = 0;
+      A.forEach(function (q) { if (near(g, 30, q, function (j) { return hyp(B[j], q) < 25; })) hits++; });
+      return A.length ? hits / A.length : 0;
+    }
+    function locate(path, locs) {   // hvor i geometrien hvert stoppunkt ligger, i rekkefølge
+      var idx = [], from = 0;
+      for (var k = 0; k < locs.length; k++) {
+        var best = from, bd = Infinity;
+        for (var i = from; i < path.length; i++) {
+          var d = dist(path[i], locs[k]);
+          if (d < bd) { bd = d; best = i; if (d < 0.5) break; }
+        }
+        idx.push(best); from = best;
+      }
+      return idx;
+    }
+    function trim(path, vias) {   // klipper bort blindveier der ruta går ut til et stoppunkt og samme vei tilbake
+      var out = path.slice(), v = vias.slice();
+      for (var k = v.length - 1; k >= 0; k--) {
+        var lo = k > 0 ? v[k - 1] : 0, hi = k < v.length - 1 ? v[k + 1] : out.length - 1, i = v[k], j = 0;
+        while (i - j - 1 >= lo && i + j + 1 <= hi && dist(out[i - j - 1], out[i + j + 1]) < 6) j++;
+        if (j > 0) {
+          out.splice(i - j + 1, 2 * j);
+          v[k] = i - j;
+          for (var m = k + 1; m < v.length; m++) v[m] -= 2 * j;
+        }
+      }
+      return { path: out, vias: v };
+    }
+    function along(path, cum, from, to, step) {   // punkter langs veien mellom to avstander fra start
+      var out = [], i = 1;
+      for (var d = from; d <= to; d += step) {
+        while (i < cum.length - 1 && cum[i] < d) i++;
+        var seg = cum[i] - cum[i - 1], t = seg > 0 ? (d - cum[i - 1]) / seg : 0, a = path[i - 1], b = path[i];
+        out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+      }
+      return out;
+    }
+    function indexAt(cum, d) {   // første punkt som ligger minst d meter ute i ruta
+      for (var i = 0; i < cum.length; i++) if (cum[i] >= d) return i;
+      return cum.length - 1;
+    }
+    function decode6(str) {   // Valhalla sender geometrien som kodet linje med seks desimaler
+      var i = 0, lat = 0, lon = 0, out = [];
+      while (i < str.length) {
+        for (var k = 0; k < 2; k++) {
+          var shift = 0, res = 0, b;
+          do { b = str.charCodeAt(i++) - 63; res |= (b & 31) << shift; shift += 5; } while (b >= 32 && i < str.length);
+          var d = res & 1 ? ~(res >> 1) : res >> 1;
+          if (k === 0) lat += d; else lon += d;
+        }
+        out.push([lat / 1e6, lon / 1e6]);
+      }
+      return out;
+    }
+    function compass(b) {
+      return ['nordover', 'mot nordøst', 'østover', 'mot sørøst', 'sørover', 'mot sørvest', 'vestover', 'mot nordvest'][Math.round((((b % 360) + 360) % 360) / 45) % 8];
+    }
+    function outline(path, size) {   // liten tegning av rundens form
+      var la0 = Infinity, la1 = -Infinity, lo0 = Infinity, lo1 = -Infinity, k = Math.cos(path[0][0] * RAD);
+      path.forEach(function (q) { la0 = Math.min(la0, q[0]); la1 = Math.max(la1, q[0]); lo0 = Math.min(lo0, q[1]); lo1 = Math.max(lo1, q[1]); });
+      var w = (lo1 - lo0) * k, h = la1 - la0, sc = (size - 8) / Math.max(w, h, 1e-9), ox = (size - w * sc) / 2, oy = (size - h * sc) / 2;
+      var step = Math.max(1, Math.floor(path.length / 80)), pts = [];
+      for (var i = 0; i < path.length; i += step) pts.push(((path[i][1] - lo0) * k * sc + ox).toFixed(1) + ',' + ((la1 - path[i][0]) * sc + oy).toFixed(1));
+      pts.push(((path[0][1] - lo0) * k * sc + ox).toFixed(1) + ',' + ((la1 - path[0][0]) * sc + oy).toFixed(1));
+      return pts.join(' ');
+    }
+    function score(c, goal) {   // høyere er bedre. Mangler høyde eller underlag, teller de ikke med.
+      var kmLen = c.total / 1000, rep = c.repeated / c.total, climb = c.elev ? c.elev.up / kmLen : null, q = c.surf;
+      var road = q ? (q.asfalt + q.grus) / c.total : null, even = q ? Math.max(q.asfalt, q.grus, q.sti) / c.total : null;
+      var v = -8 * rep - Math.abs(c.err);   // minst mulig samme vei veier tyngst
+      if (goal === 'rolig') v += (climb === null ? 0 : -climb / 10) + (road === null ? 0 : 2 * road);
+      else if (goal === 'bakker') v += climb === null ? 0 : climb / 10;
+      else if (goal === 'langtur') v += even === null ? 0 : 2 * even;
+      return v;
+    }
+    return { dist: dist, dest: dest, cumOf: cumOf, repeated: repeated, similar: similar, locate: locate, trim: trim, along: along,
+      indexAt: indexAt, decode6: decode6, compass: compass, outline: outline, score: score };
+  })();
+  // </plan-pure>
+
+  // ---------- Eget veisøk på kartdata fra OpenStreetMap, så føre, lys og skiløyper kan styre rutevalget ----------
+  // <net-pure>
+  var Net = (function () {
+    var RAD = Math.PI / 180;
+    var WALK = { residential: 1, unclassified: 1, tertiary: 1, tertiary_link: 1, secondary: 1, secondary_link: 1, primary: 1, primary_link: 1,
+      trunk: 1, trunk_link: 1, service: 1, living_street: 1, pedestrian: 1, road: 1, cycleway: 1, footway: 1, path: 1, track: 1, steps: 1, bridleway: 1 };
+    var HARD = /^(asphalt|paved|concrete|concrete:plates|concrete:lanes|paving_stones|sett|cobblestone|chipseal|metal)$/;
+    var LOOSE = /^(gravel|fine_gravel|compacted|unpaved|pebblestone)$/, LIT = /^(yes|24\/7|automatic|limited|sunset-sunrise|dusk-dawn)$/;
+    function blocked(t) {
+      var foot = t.foot || '';
+      if (foot === 'no') return true;
+      return (t.access === 'private' || t.access === 'no') && !/^(yes|designated|permissive)$/.test(foot);
+    }
+    function isPiste(t) { return !!t['piste:type'] && t['piste:type'] !== 'connection' && t['piste:grooming'] !== 'backcountry'; }
+    function classify(t) {   // underlag, brøyting og lys, slik veien er merket. Mangler merking, antas det ut fra veitypen.
+      var h = t.highway, sf = t.surface || '', surf;
+      if (HARD.test(sf)) surf = 'asfalt'; else if (LOOSE.test(sf)) surf = 'grus'; else if (sf) surf = 'sti';
+      else surf = h === 'path' || h === 'bridleway' || h === 'steps' ? 'sti' : h === 'track' ? 'grus' : 'asfalt';
+      var small = h === 'path' || h === 'track' || h === 'bridleway' || h === 'steps' || (h === 'footway' && surf === 'sti');
+      var plow = t.winter_service === 'yes' || (!small && t.winter_service !== 'no');
+      return { surf: surf, plow: plow, lit: LIT.test(t.lit || '') ? 1 : t.lit === 'no' ? 0 : -1, name: t.name || '' };
+    }
+    function build(osm, ref) {
+      var kx = 111320 * Math.cos(ref[0] * RAD), ky = 110540, ids = new Map();
+      var G = { ref: ref, kx: kx, ky: ky, lat: [], lng: [], x: [], y: [], adj: [], to: [], len: [], way: [], pst: [], ways: [] };
+      function node(lat, lon) {
+        var k = lat.toFixed(7) + ',' + lon.toFixed(7), i = ids.get(k);
+        if (i === undefined) {
+          i = G.lat.length; ids.set(k, i);
+          G.lat.push(lat); G.lng.push(lon); G.x.push((lon - ref[1]) * kx); G.y.push((lat - ref[0]) * ky); G.adj.push([]);
+        }
+        return i;
+      }
+      var pg = {}, cell = 25, hasPiste = false;
+      function pmark(x, y) { var k = Math.floor(x / cell) + ',' + Math.floor(y / cell); (pg[k] || (pg[k] = [])).push(x, y); hasPiste = true; }
+      (osm.elements || []).forEach(function (el) {
+        var t = el.tags || {}, g = el.geometry, i;
+        if (!g || g.length < 2) return;
+        var piste = isPiste(t);
+        if (piste) for (i = 1; i < g.length; i++) {   // punkter hver 10. meter langs skiløypa
+          var ax = (g[i - 1].lon - ref[1]) * kx, ay = (g[i - 1].lat - ref[0]) * ky, bx = (g[i].lon - ref[1]) * kx, by = (g[i].lat - ref[0]) * ky;
+          var n = Math.max(1, Math.ceil(Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) / 10));
+          for (var j = 0; j <= n; j++) pmark(ax + (bx - ax) * j / n, ay + (by - ay) * j / n);
+        }
+        if (!WALK[t.highway] || blocked(t)) return;
+        var w = G.ways.length, prev = node(g[0].lat, g[0].lon);
+        G.ways.push(classify(t));
+        for (i = 1; i < g.length; i++) {
+          var cur = node(g[i].lat, g[i].lon);
+          if (cur !== prev) {
+            var dx = G.x[cur] - G.x[prev], dy = G.y[cur] - G.y[prev], d = Math.sqrt(dx * dx + dy * dy), e = G.to.length;
+            G.to.push(cur, prev); G.len.push(d, d); G.way.push(w, w); G.pst.push(piste ? 1 : 0);
+            G.adj[prev].push(e); G.adj[cur].push(e + 1);
+          }
+          prev = cur;
+        }
+      });
+      function nearPiste(x, y) {
+        var cx = Math.floor(x / cell), cy = Math.floor(y / cell);
+        for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) {
+          var l = pg[(cx + a) + ',' + (cy + b)];
+          if (l) for (var q = 0; q < l.length; q += 2) if ((l[q] - x) * (l[q] - x) + (l[q + 1] - y) * (l[q + 1] - y) < 64) return true;
+        }
+        return false;
+      }
+      if (hasPiste) for (var p = 0; p < G.pst.length; p++) {   // en vei regnes som skiløype der den følger løypa, ikke der den bare krysser
+        if (G.pst[p]) continue;
+        var u = G.to[2 * p + 1], v = G.to[2 * p];
+        if (nearPiste(G.x[u], G.y[u]) && nearPiste(G.x[v], G.y[v]) && nearPiste((G.x[u] + G.x[v]) / 2, (G.y[u] + G.y[v]) / 2)) G.pst[p] = 1;
+      }
+      return G;
+    }
+    function snap(G, pt) {   // nærmeste punkt på en vei. Ligger det midt på en strekning, lages et nytt knutepunkt der.
+      var px = (pt[1] - G.ref[1]) * G.kx, py = (pt[0] - G.ref[0]) * G.ky, best = -1, bd = Infinity, bt = 0;
+      for (var e = 0; e < G.to.length; e += 2) {
+        var a = G.to[e + 1], b = G.to[e], ax = G.x[a], ay = G.y[a], dx = G.x[b] - ax, dy = G.y[b] - ay, l2 = dx * dx + dy * dy;
+        var t = l2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
+        var qx = ax + dx * t - px, qy = ay + dy * t - py, d = qx * qx + qy * qy;
+        if (d < bd) { bd = d; best = e; bt = t; }
+      }
+      if (best < 0 || bd > 300 * 300) return -1;
+      var u = G.to[best + 1], v = G.to[best];
+      if (bt * G.len[best] < 3) return u;
+      if ((1 - bt) * G.len[best] < 3) return v;
+      var n = G.lat.length;
+      G.lat.push(G.lat[u] + (G.lat[v] - G.lat[u]) * bt); G.lng.push(G.lng[u] + (G.lng[v] - G.lng[u]) * bt);
+      G.x.push(G.x[u] + (G.x[v] - G.x[u]) * bt); G.y.push(G.y[u] + (G.y[v] - G.y[u]) * bt); G.adj.push([]);
+      [[u, bt], [v, 1 - bt]].forEach(function (h) {
+        var e2 = G.to.length, d2 = G.len[best] * h[1];
+        G.to.push(h[0], n); G.len.push(d2, d2); G.way.push(G.way[best], G.way[best]); G.pst.push(G.pst[best >> 1]);
+        G.adj[n].push(e2); G.adj[h[0]].push(e2 + 1);
+      });
+      return n;
+    }
+    function weights(G, cond) {   // hvor mye lengre en vei «teller» under dagens forhold. Høyt tall betyr: unngå hvis det finnes noe annet.
+      return G.ways.map(function (w) {
+        var m = 1;
+        if (cond.fore === 'sno' && !w.plow) m *= 6;
+        if (cond.fore === 'vatt' && w.surf === 'sti') m *= 3;
+        if (cond.dark) m *= w.lit === 1 ? 0.8 : w.lit === 0 ? 1.3 : 1;
+        return m;
+      });
+    }
+    function dijkstra(G, src, wm, pm, extra, stop) {   // billigste vei fra src til alle punkter (eller til stop)
+      var n = G.lat.length, cost = new Float64Array(n).fill(Infinity), met = new Float64Array(n), pe = new Int32Array(n).fill(-1), done = new Uint8Array(n);
+      var hk = [0], hn = [src];
+      cost[src] = 0;
+      while (hk.length) {
+        var k = hk[0], u = hn[0], lk = hk.pop(), ln = hn.pop(), len = hk.length;
+        if (len) {
+          var i = 0;
+          for (;;) {
+            var l = 2 * i + 1, r = l + 1, m = -1, mk = lk;
+            if (l < len && hk[l] < mk) { m = l; mk = hk[l]; }
+            if (r < len && hk[r] < mk) m = r;
+            if (m < 0) break;
+            hk[i] = hk[m]; hn[i] = hn[m]; i = m;
+          }
+          hk[i] = lk; hn[i] = ln;
+        }
+        if (done[u]) continue;
+        done[u] = 1;
+        if (u === stop) break;
+        var a = G.adj[u];
+        for (var j = 0; j < a.length; j++) {
+          var e = a[j], v = G.to[e];
+          if (done[v]) continue;
+          var c = G.len[e] * wm[G.way[e]];
+          if (pm > 1 && G.pst[e >> 1]) c *= pm;
+          if (extra && extra[e >> 1]) c *= extra[e >> 1];
+          var nc = k + c;
+          if (nc < cost[v]) {
+            cost[v] = nc; met[v] = met[u] + G.len[e]; pe[v] = e;
+            var p = hk.length;
+            hk.push(nc); hn.push(v);
+            while (p > 0) { var q = (p - 1) >> 1; if (hk[q] <= nc) break; hk[p] = hk[q]; hn[p] = hn[q]; p = q; }
+            hk[p] = nc; hn[p] = v;
+          }
+        }
+      }
+      return { cost: cost, met: met, pe: pe };
+    }
+    function chain(G, res, v) {   // strekningene fra start til v, i rekkefølge
+      var edges = [];
+      while (res.pe[v] >= 0) { var e = res.pe[v]; edges.push(e); v = G.to[e ^ 1]; }
+      return edges.reverse();
+    }
+    function prepare(G, start, D, cond) {   // finn mulige vendepunkter: i hver himmelretning og avstand, det som ligger lengst unna i luftlinje
+      var s = snap(G, start);
+      if (s < 0) return null;
+      var wm = weights(G, cond), pm = cond.fore === 'sno' ? 10 : 1, out = dijkstra(G, s, wm, pm, null, -1);
+      var bands = [0.30, 0.36, 0.42, 0.48, 0.54], best = {}, n = G.lat.length;
+      for (var v = 0; v < n; v++) {
+        var m = out.met[v], e = out.pe[v];
+        if (e < 0 || m < 0.27 * D || m > 0.57 * D) continue;
+        if (wm[G.way[e]] > 1.5 || (pm > 1 && G.pst[e >> 1])) continue;   // ikke snu på en vei forholdene taler mot
+        var dx = G.x[v] - G.x[s], dy = G.y[v] - G.y[s], air = Math.sqrt(dx * dx + dy * dy);
+        if (air < 0.1 * D) continue;
+        var sector = Math.floor((((Math.atan2(dx, dy) / RAD) + 360) % 360) / 30) % 12;
+        for (var b = 0; b < bands.length; b++) if (Math.abs(m - bands[b] * D) <= 0.03 * D) {
+          var key = sector * 8 + b;
+          if (!best[key] || air > best[key].air) best[key] = { v: v, air: air };
+        }
+      }
+      var seen = {}, turns = [];
+      Object.keys(best).forEach(function (k2) { var t = best[k2].v; if (!seen[t]) { seen[t] = 1; turns.push(t); } });
+      return { s: s, wm: wm, pm: pm, out: out, turns: turns };
+    }
+    function tryTurn(G, P, T, D) {   // ut til vendepunktet, og hjem en annen vei: veien ut og veier tett inntil den teller mye lengre
+      var on = chain(G, P.out, T);
+      if (!on.length) return null;
+      var extra = new Float32Array(G.to.length >> 1), grid = {}, cell = 20, x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, i;
+      on.forEach(function (e) {
+        extra[e >> 1] = 8;
+        var a = G.to[e ^ 1], b = G.to[e], n = Math.max(1, Math.ceil(G.len[e] / 10));
+        for (var j = 0; j <= n; j++) {
+          var x = G.x[a] + (G.x[b] - G.x[a]) * j / n, y = G.y[a] + (G.y[b] - G.y[a]) * j / n, k = Math.floor(x / cell) + ',' + Math.floor(y / cell);
+          (grid[k] || (grid[k] = [])).push(x, y);
+          if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      });
+      for (i = 0; i < extra.length; i++) {   // fortau og parallelle veier innen 18 m regnes som samme vei
+        if (extra[i]) continue;
+        var u = G.to[2 * i + 1], v = G.to[2 * i], mx = (G.x[u] + G.x[v]) / 2, my = (G.y[u] + G.y[v]) / 2;
+        if (mx < x0 - 20 || mx > x1 + 20 || my < y0 - 20 || my > y1 + 20) continue;
+        var cx = Math.floor(mx / cell), cy = Math.floor(my / cell), hit = false;
+        for (var a2 = -1; a2 <= 1 && !hit; a2++) for (var b2 = -1; b2 <= 1 && !hit; b2++) {
+          var l = grid[(cx + a2) + ',' + (cy + b2)];
+          if (l) for (var q = 0; q < l.length; q += 2) if ((l[q] - mx) * (l[q] - mx) + (l[q + 1] - my) * (l[q + 1] - my) < 324) { hit = true; break; }
+        }
+        if (hit) extra[i] = 4;
+      }
+      var back = dijkstra(G, T, P.wm, P.pm, extra, P.s);
+      if (!isFinite(back.cost[P.s])) return null;
+      var be = chain(G, back, P.s);
+      while (on.length && be.length && (on[on.length - 1] >> 1) === (be[0] >> 1)) { on.pop(); be.shift(); }   // blindvei ved vendepunktet klippes bort
+      if (!on.length || !be.length) return null;
+      var edges = on.concat(be), path = [[G.lat[P.s], G.lng[P.s]]], total = 0;
+      edges.forEach(function (e) { var w = G.to[e]; path.push([G.lat[w], G.lng[w]]); total += G.len[e]; });
+      if (Math.abs(total - D) / D > 0.10) return null;
+      var t = G.to[on[on.length - 1]];
+      return { path: path, edges: edges, total: total, err: (total - D) / D, turn: on.length,
+        bearing: ((Math.atan2(G.x[t] - G.x[P.s], G.y[t] - G.y[P.s]) / RAD) + 360) % 360 };
+    }
+    function describe(G, c) {   // hva runden består av, målt på kartdataene
+      var o = { parts: { asfalt: 0, grus: 0, sti: 0 }, unplowed: 0, piste: 0, litYes: 0, litNo: 0, litUnknown: 0, via: '' }, names = {}, first = '';
+      c.edges.forEach(function (e, n) {
+        var w = G.ways[G.way[e]], L = G.len[e];
+        o.parts[w.surf] += L;
+        if (!w.plow) o.unplowed += L;
+        if (G.pst[e >> 1]) o.piste += L;
+        if (w.lit === 1) o.litYes += L; else if (w.lit === 0) o.litNo += L; else o.litUnknown += L;
+        if (w.name) { names[w.name] = (names[w.name] || 0) + L; if (!first && n < 3) first = w.name; }
+      });
+      var top = 0;
+      Object.keys(names).forEach(function (k) { if (k !== first && names[k] > top) { top = names[k]; o.via = k; } });
+      return o;
+    }
+    function coverage(G) {   // hvor stor del av veiene i området som har opplysning om lys
+      var known = 0, all = 0;
+      for (var e = 0; e < G.to.length; e += 2) { all += G.len[e]; if (G.ways[G.way[e]].lit !== -1) known += G.len[e]; }
+      return all > 0 ? known / all : 0;
+    }
+    return { build: build, snap: snap, prepare: prepare, tryTurn: tryTurn, describe: describe, coverage: coverage, classify: classify, dijkstra: dijkstra, weights: weights };
+  })();
+  // </net-pure>
+
+  // ---------- Føre, beste tidspunkt og forklaringer: rene regler ----------
+  // <cond-pure>
+  var Cond = (function () {
+    var RAD = Math.PI / 180, DIRS = ['nord', 'nordøst', 'øst', 'sørøst', 'sør', 'sørvest', 'vest', 'nordvest'];
+    var FORE = { bart: 'bart', vatt: 'vått', sno: 'snø og is' };
+    function windName(deg) { return DIRS[Math.round((((deg % 360) + 360) % 360) / 45) % 8]; }
+    function fore(depth, now, month) {   // depth i meter fra værmodellen, eller null når den ikke svarte
+      var wet = !!now && (now.precip > 0 || /rain|sleet|snow/.test(now.symbol || ''));
+      if (depth === null) {   // ingen snødata: anslå ut fra måned og temperatur
+        var cold = now ? now.temp <= 0 : null, why = 'Anslag ut fra måned og temperatur, fordi snødata ikke svarte.';
+        if ((month === 12 || month <= 3) && cold !== false) return { kind: 'sno', guess: true, why: why };
+        if ((month === 11 || month === 4) && cold) return { kind: 'sno', guess: true, why: why };
+        return { kind: wet ? 'vatt' : 'bart', guess: true, why: why };
+      }
+      if (depth >= 0.02) return { kind: 'sno', guess: false, why: 'Værmodellen har ca. ' + Math.round(depth * 100) + ' cm snø her.' };
+      if (wet && now.temp <= 0) return { kind: 'sno', guess: false, why: 'Nedbør og kuldegrader.' };
+      return { kind: wet ? 'vatt' : 'bart', guess: false, why: wet ? 'Nedbør nå, og ingen snø i værmodellen.' : 'Ingen snø i værmodellen, og opphold.' };
+    }
+    function bestWindow(list) {   // beste to timer: lyst foran mørkt, så minst nedbør, så minst vind. I dag foran i morgen.
+      var best = [null, null];
+      for (var i = 0; i + 1 < list.length; i++) {
+        var a = list[i], b = list[i + 1];
+        if (a.day !== b.day || b.h !== a.h + 1 || a.day > 1 || a.h < 6 || b.h > 21) continue;
+        var w = { day: a.day, from: a.h, to: b.h + 1, light: Math.min(a.light, b.light), precip: a.precip + b.precip, wind: Math.max(a.wind, b.wind), first: !!a.first };
+        var o = best[a.day];
+        if (!o || w.light > o.light || (w.light === o.light && (w.precip < o.precip - 0.05 || (Math.abs(w.precip - o.precip) <= 0.05 && w.wind < o.wind - 0.5)))) best[a.day] = w;
+      }
+      return best[0] || best[1];
+    }
+    function bestText(w) {
+      var light = ['mørkt', 'skumring', 'lyst'][w.light];
+      return 'Best ' + (w.day ? 'i morgen' : 'i dag') + ': ' + (w.first && !w.day ? 'nå' : w.from) + '–' + w.to + ', ' + light +
+        (w.precip > 0.05 ? ', ca. ' + String(Math.round(w.precip * 10) / 10).replace('.', ',') + ' mm nedbør' : ' og opphold');
+    }
+    function line(now, foreKind, guess, picked, darkText) {   // dagens forhold på én linje
+      var parts = [];
+      if (now && typeof now.temp === 'number') parts.push(String(Math.round(now.temp)).replace('-', '−') + '°');
+      parts.push(FORE[foreKind] + (picked ? ' (valgt av deg)' : guess ? ' (anslag)' : ''));
+      if (now && typeof now.wind === 'number') parts.push('vind ' + Math.round(now.wind) + ' m/s' + (typeof now.from === 'number' ? ' fra ' + windName(now.from) : ''));
+      if (darkText) parts.push(darkText);
+      return parts.join(', ');
+    }
+    function score(c, cond) {   // tillegg til poengene ut fra forholdene. Høyere er bedre.
+      var i = c.info, T = c.total, v = 0;
+      if (i) {
+        if (cond.fore === 'sno') v -= 10 * (i.unplowed + i.piste) / T;
+        if (cond.fore === 'vatt') v -= 5 * i.parts.sti / T;
+        if (cond.dark) v += 3 * i.litYes / T - 2 * i.litNo / T;
+      }
+      if (cond.wind) v += 1.5 * Math.cos((c.bearing - cond.wind.from) * RAD);
+      return v;
+    }
+    function dist(m) { return m >= 950 ? String(Math.round(m / 100) / 10).replace('.', ',') + ' km' : Math.max(10, Math.round(m / 10) * 10) + ' m'; }
+    function explain(c, cond) {   // hva som taler for runden, og hva som ikke ble oppfylt
+      var why = [], unmet = [], i = c.info, T = c.total;
+      if (cond.fore === 'sno') {
+        if (i.unplowed < 50) why.push('veier som normalt brøytes'); else unmet.push(dist(i.unplowed) + ' sti eller skogsvei som neppe brøytes');
+        if (i.piste >= 30) unmet.push(dist(i.piste) + ' i skiløype'); else why.push('ingen skiløype');
+      }
+      if (cond.fore === 'vatt') { if (i.parts.sti < 100) why.push('asfalt og grus'); else unmet.push(dist(i.parts.sti) + ' sti'); }
+      if (cond.dark) {
+        if (i.litYes >= 0.5 * T) why.push('lys på ' + dist(i.litYes));
+        if (i.litNo >= 50) unmet.push(dist(i.litNo) + ' uten lys');   // «uten lys» bare der kartet sier det. Resten er ukjent, ikke gjettet.
+        if (i.litUnknown >= 50) unmet.push('lysdata mangler for ' + dist(i.litUnknown));
+      }
+      if (cond.wind) {
+        var cs = Math.cos((c.bearing - cond.wind.from) * RAD);
+        if (cs >= 0.5) why.push('motvind ut og medvind hjem'); else if (cs <= -0.5) unmet.push('medvind ut og motvind hjem');
+      }
+      if (cond.fore === 'bart' && i.parts.sti >= 200) why.push(dist(i.parts.sti) + ' sti');
+      if (c.repeated < 0.05 * T) why.push('lite samme vei to ganger');
+      return { why: why, unmet: unmet };
+    }
+    function tips(cond) {   // korte praktiske påminnelser, bare når de passer
+      var t = [];
+      if (cond.dark) t.push('Husk refleks.');
+      if (cond.fore === 'sno' || (typeof cond.temp === 'number' && cond.temp <= 0)) t.push('Det kan være glatt, så piggsko kan være lurt.');
+      return t.join(' ');
+    }
+    return { fore: fore, bestWindow: bestWindow, bestText: bestText, line: line, score: score, explain: explain, tips: tips, windName: windName, FORE: FORE };
+  })();
+  // </cond-pure>
+
+  // ---------- Turforslag: søk etter runder med ruteplanleggeren ----------
+  // <plan-search>
+  // Hver runde lages slik: korteste vei ut til et vendepunkt, og så en vei hjem som ikke får bruke strekningene vi gikk ut på.
+  function routeLoop(pts) {   // vei ut (OSRM). null = ingen vei, feil = tjenesten svarte ikke
+    var url = ROUTER + pts.map(function (q) { return q[1].toFixed(6) + ',' + q[0].toFixed(6); }).join(';') +
+      '?alternatives=false&steps=false&geometries=geojson&overview=full';
+    return routerJSON(url).then(function (j) {
+      if (!j || j.code !== 'Ok' || !j.routes || !j.routes.length || !j.waypoints) return null;
+      return { path: j.routes[0].geometry.coordinates.map(function (q) { return [q[1], q[0]]; }),
+        wps: j.waypoints.map(function (w) { return { loc: [w.location[1], w.location[0]], name: w.name || '' }; }) };
+    });
+  }
+  function routeBack(from, to, avoid) {   // vei hjem (Valhalla) utenom punktene i avoid. null = ingen annen vei hjem
+    return surfQueue.take().then(function () {
+      var ctrl = new AbortController();
+      setTimeout(function () { ctrl.abort(); }, 12000);
+      return fetch(VALHALLA_ROUTE, { method: 'POST', signal: ctrl.signal, body: JSON.stringify({
+        locations: [{ lat: from[0], lon: from[1] }, { lat: to[0], lon: to[1] }], costing: 'pedestrian', directions_type: 'none',
+        exclude_locations: avoid.map(function (q) { return { lat: +q[0].toFixed(6), lon: +q[1].toFixed(6) }; }) }) });
+    }).then(function (r) {
+      if (r.status === 429 || r.status >= 500) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (j) {
+      if (!j || !j.trip || !j.trip.legs || !j.trip.legs.length) return null;
+      var path = [];
+      j.trip.legs.forEach(function (l) { path = path.concat(Plan.decode6(l.shape)); });
+      return path.length > 1 ? path : null;
+    });
+  }
+  function buildLoop(out, home, start, D, bearing) {
+    var t = Plan.trim(out.path.concat(home.slice(1)), [out.path.length - 1]), turn = t.vias[0];
+    if (turn <= 0 || turn >= t.path.length - 1) return null;   // alt ble klippet bort: det var bare tur-retur
+    var cum = Plan.cumOf(t.path), total = cum[cum.length - 1], back = total - cum[turn], vias = [], prev = 0;
+    // stoppunkter som holder på formen når ruta tegnes på nytt: midt på veien ut, vendepunktet og to på veien hjem
+    [cum[turn] / 2, cum[turn], cum[turn] + back / 3, cum[turn] + back * 2 / 3].forEach(function (d) {
+      var i = Plan.indexAt(cum, d);
+      if (i > prev && i < t.path.length - 1) { vias.push({ i: i }); prev = i; }
+    });
+    if (!vias.length) return null;
+    return { start: start, path: t.path, cum: cum, total: total, err: (total - D) / D, vias: vias, bearing: bearing,
+      turnName: out.wps[1].name, startName: out.wps[0].name };
+  }
+  async function tryDirection(start, D, bearing, tok, budget) {
+    var base = D / 2 / 1.3, r = base * budget.k, best = null;   // veier er lengre enn luftlinje, derfor 1,3
+    for (var it = 0; it < 3 && budget.left > 0 && !tok.cancel; it++) {
+      budget.left--; budget.tried++;
+      var c = null;
+      try {
+        var out = await routeLoop([start, Plan.dest(start, bearing, r)]);
+        if (!out || out.path.length < 2) break;
+        var cumA = Plan.cumOf(out.path), a = cumA[cumA.length - 1];
+        if (a < 100) break;
+        var avoid = Plan.along(out.path, cumA, a * 0.12, a * 0.88, Math.max(40, a * 0.76 / 45));   // tjenesten tar maks 50 punkter
+        var home = await routeBack(out.path[out.path.length - 1], start, avoid);
+        if (!home) break;   // ingen annen vei hjem i denne retningen
+        c = buildLoop(out, home, start, D, bearing);
+      } catch (e) { budget.fail++; break; }
+      if (!c) break;
+      if (!best || Math.abs(c.err) < Math.abs(best.err)) { best = c; best.r = r; }
+      if (Math.abs(c.err) <= 0.06) break;   // sikter tettere enn kravet på 10 %
+      r *= Math.min(2.5, Math.max(0.4, D / c.total));   // juster avstanden til vendepunktet og prøv igjen
+    }
+    if (!best || Math.abs(best.err) > 0.10) return null;
+    budget.k = (budget.k + best.r / base) / 2;   // lær hvor mye lengre veiene er enn luftlinja her, til neste retning
+    return best;
+  }
+  // <plan-util>
+  function alike(a, b) { return Math.max(Plan.similar(a.path, a.cum, b.path, b.cum), Plan.similar(b.path, b.cum, a.path, a.cum)); }
+  function pickDistinct(list, max, limits) {
+    var pick = [];
+    limits.forEach(function (limit) {
+      list.forEach(function (c) {
+        if (pick.length < max && pick.indexOf(c) < 0 && !pick.some(function (q) { return alike(c, q) > limit; })) pick.push(c);
+      });
+    });
+    return pick;
+  }
+  async function pool(list, size, fn) {
+    var i = 0;
+    async function worker() { while (i < list.length) { var item = list[i++]; await fn(item); } }
+    var ws = [];
+    for (var k = 0; k < size; k++) ws.push(worker());
+    await Promise.all(ws);
+  }
+  // </plan-util>
+  async function makeTours(start, D, goalKey, tok, progress) {
+    var budget = { left: 20, tried: 0, fail: 0, k: 1 }, cands = [], dirs = [0, 180, 90, 270, 45, 225, 135, 315];
+    progress(0.02, 'Prøver retning 1 av ' + dirs.length + '…');
+    for (var n = 0; n < dirs.length && !tok.cancel; n++) {
+      var c = await tryDirection(start, D, dirs[n], tok, budget);
+      if (c) cands.push(c);
+      if (n + 1 < dirs.length) progress(0.75 * (n + 1) / dirs.length, 'Prøver retning ' + (n + 2) + ' av ' + dirs.length + '…');
+    }
+    if (tok.cancel) return null;
+    if (!cands.length) return { tours: [], reason: budget.fail * 2 >= budget.tried ? 'net' : 'none' };
+    cands.forEach(function (q) { q.repeated = Plan.repeated(q.path, q.cum); });
+    cands.sort(function (a, b) { return a.repeated / a.total - b.repeated / b.total; });
+    var fin = pickDistinct(cands, 4, [0.85]), m = 0;
+    progress(0.76, 'Sjekker høyde og underlag…');
+    await pool(fin, 2, async function (q) {
+      if (tok.cancel) return;
+      var both = await Promise.all([elevFor(q.path, q.cum, q.total, 99).catch(function () { return null; }),
+        surfFor(q.path, q.total).catch(function () { return null; })]);
+      q.elev = both[0]; q.surf = both[1];
+      m++;
+      progress(0.76 + 0.24 * m / fin.length, 'Sjekker høyde og underlag (' + m + ' av ' + fin.length + ')…');
+    });
+    if (tok.cancel) return null;
+    fin.forEach(function (q) { q.score = Plan.score(q, goalKey); });
+    fin.sort(function (a, b) { return b.score - a.score; });
+    var pick = pickDistinct(fin, 3, [0.6, 0.8]);
+    pick.sort(function (a, b) { return b.score - a.score; });
+    return { tours: pick, found: cands.length, tried: budget.tried };
+  }
+  // </plan-search>
+
+  // ---------- Turforslag med hensyn til vær og føre: kartdata hentes én gang, og rundene regnes ut her ----------
+  // <local-search>
+  var mapCache = null;
+  function mapData(start, D) {   // veier, lys og skiløyper rundt start. Gjenbrukes så lenge neste søk ligger innenfor samme område.
+    var R = 0.5 * D + 400, dLat = R / 110540, dLon = R / (111320 * Math.cos(start[0] * Math.PI / 180));
+    var box = { s: start[0] - dLat, n: start[0] + dLat, w: start[1] - dLon, e: start[1] + dLon };
+    if (mapCache && mapCache.s <= box.s && mapCache.n >= box.n && mapCache.w <= box.w && mapCache.e >= box.e) return Promise.resolve(mapCache.G);
+    var b = [box.s, box.w, box.n, box.e].map(function (v) { return v.toFixed(5); }).join(',');
+    var q = '[out:json][timeout:20];(way["highway"](' + b + ');way["piste:type"](' + b + '););out tags geom qt;';
+    function attempt(i) {
+      if (i >= OVERPASS.length) return Promise.reject(new Error('Ingen kartdata'));
+      var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 15000);
+      return fetch(OVERPASS[i], { method: 'POST', signal: ctrl.signal, body: new URLSearchParams({ data: q }) })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (j) { clearTimeout(timer); if (!j || !Array.isArray(j.elements) || !j.elements.length) throw new Error('Tomt svar'); return j; })
+        .catch(function () { clearTimeout(timer); return attempt(i + 1); });
+    }
+    return attempt(0).then(function (j) {
+      var G = Net.build(j, start);
+      if (!G.to.length) throw new Error('Ingen veier');
+      mapCache = { s: box.s, n: box.n, w: box.w, e: box.e, G: G };
+      return G;
+    });
+  }
+  function pause() { return new Promise(function (go) { setTimeout(go, 0); }); }
+  async function makeToursLocal(start, D, goalKey, cond, tok, progress) {
+    progress(0.05, 'Henter kartdata om veier, lys og skiløyper…');
+    var G = await mapData(start, D);
+    if (tok.cancel) return null;
+    progress(0.35, 'Regner ut runder…');
+    await pause();
+    var P = Net.prepare(G, start, D, cond), cands = [];
+    if (!P) return { tours: [], reason: 'none', local: true };
+    for (var n = 0; n < P.turns.length; n++) {
+      var c = Net.tryTurn(G, P, P.turns[n], D);
+      if (c) cands.push(c);
+      if (n % 8 === 7) { progress(0.35 + 0.35 * n / P.turns.length, 'Regner ut runder…'); await pause(); if (tok.cancel) return null; }
+    }
+    if (!cands.length) return { tours: [], reason: 'none', local: true };
+    cands.forEach(function (q) {
+      q.start = start; q.cum = Plan.cumOf(q.path); q.total = q.cum[q.cum.length - 1]; q.err = (q.total - D) / D;
+      q.repeated = Plan.repeated(q.path, q.cum); q.info = Net.describe(G, q); q.surf = q.info.parts; q.turnName = q.info.via; q.startName = '';
+      q.pre = Plan.score(q, goalKey) + Cond.score(q, cond);
+    });
+    cands.sort(function (a, b) { return b.pre - a.pre; });
+    var fin = pickDistinct(cands, 6, [0.7]), m = 0;
+    progress(0.72, 'Sjekker høyde…');
+    await pool(fin, 2, async function (q) {
+      if (tok.cancel) return;
+      q.elev = await elevFor(q.path, q.cum, q.total, 99).catch(function () { return null; });
+      m++;
+      progress(0.72 + 0.28 * m / fin.length, 'Sjekker høyde (' + m + ' av ' + fin.length + ')…');
+    });
+    if (tok.cancel) return null;
+    fin.forEach(function (q) { q.score = Plan.score(q, goalKey) + Cond.score(q, cond); });
+    fin.sort(function (a, b) { return b.score - a.score; });
+    var pick = pickDistinct(fin, 3, [0.6, 0.8]);
+    pick.sort(function (a, b) { return b.score - a.score; });
+    return { tours: pick, found: cands.length, local: true, litKnown: Net.coverage(G) };
+  }
+  // </local-search>
+
+  // ---------- Dagens forhold: føre, vind, mørke og beste tidspunkt ----------
+  function osloParts(ms) {
+    var d = new Date(ms);
+    return { day: d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' }),
+      hour: +d.toLocaleTimeString('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: 'Europe/Oslo' }).slice(0, 2),
+      month: +d.toLocaleDateString('en-US', { month: 'numeric', timeZone: 'Europe/Oslo' }) };
+  }
+  function currentCond(start, minutes) {
+    var now = new Date(), o = osloParts(now.getTime());
+    var auto = Cond.fore(snow.status === 'ok' ? snow.depth : null, wx.status === 'ok' ? wx.now : null, o.month), pick = radio('planFore') || 'auto';
+    var t = sunTimes(now, start[0], start[1]), dark = false, darkText = '';
+    if (t && t.dusk) {
+      var isDark = now > t.dusk || now < t.rise;
+      dark = isDark || now.getTime() + minutes * 60000 > t.dusk.getTime();
+      darkText = isDark ? 'mørkt nå' : 'mørkt ca. ' + hm(t.dusk);
+    }
+    var w = wx.status === 'ok' && wx.now && wx.now.wind > 5 && typeof wx.now.from === 'number' ? { speed: wx.now.wind, from: wx.now.from } : null;   // vind over ca. 5 m/s
+    return { use: el('planUse').checked, fore: pick === 'auto' ? auto.kind : pick, auto: auto, picked: pick !== 'auto', dark: dark, darkText: darkText,
+      wind: w, temp: wx.status === 'ok' && wx.now ? wx.now.temp : null };
+  }
+  function bestLine(p) {
+    if (wx.status !== 'ok' || !wx.hours || !wx.hours.length) return '';
+    var nowMs = Date.now(), today = osloParts(nowMs).day, tomorrow = osloParts(nowMs + 86400000).day, list = [];
+    wx.hours.forEach(function (x) {
+      if (x.t + 3600000 <= nowMs) return;
+      var o = osloParts(x.t), day = o.day === today ? 0 : o.day === tomorrow ? 1 : 2;
+      if (day > 1) return;
+      var t = sunTimes(new Date(x.t), p[0], p[1]), light = 0, a = Math.max(x.t, nowMs), b = x.t + 3600000;
+      if (t) light = a >= t.rise.getTime() && b <= t.set.getTime() ? 2 : t.dusk && a >= t.rise.getTime() && b <= t.dusk.getTime() ? 1 : 0;
+      list.push({ h: o.hour, day: day, light: light, precip: x.precip || 0, wind: x.wind || 0, first: x.t <= nowMs });
+    });
+    var w = Cond.bestWindow(list);
+    return w ? Cond.bestText(w) : '';
+  }
+  function condUI() {
+    if (el('planSheet').hidden) return;
+    var p = planStartPoint() || refPoint(), c = currentCond(p, 0), use = c.use;
+    el('condLine').textContent = wx.status === 'ok' || snow.status === 'ok' ? Cond.line(wx.status === 'ok' ? wx.now : null, c.fore, c.auto.guess, c.picked, c.darkText)
+      : wx.status === 'fail' ? 'Været er ikke tilgjengelig akkurat nå.' : 'Henter vær og føre…';
+    el('bestLine').textContent = bestLine(p);
+    el('bestLine').hidden = !el('bestLine').textContent;
+    el('foreSet').hidden = !use;
+    el('pfAutoText').textContent = 'Auto: ' + Cond.FORE[c.auto.kind];
+    el('foreNote').textContent = c.auto.why + (snow.status === 'ok' ? ' Snødybde fra Open-Meteo.' : '') + ' Trykk for å overstyre.';
+  }
+
+  // ---------- Turforslag: skjema og kort ----------
+  var LEVELS = {   // utgangspunkt du kan overstyre, ikke treningsråd
+    ny: { name: 'nybegynner', km: 3, pace: 7.5, tip: ' Start rolig, og gå gjerne i bakkene.' },
+    middels: { name: 'middels', km: 6, pace: 6.25, tip: '' },
+    erfaren: { name: 'erfaren', km: 10, pace: 5.25, tip: '' }
+  };
+  var plan = { picking: false, point: null, tok: null, touched: { len: false, pace: false } };
+  var planLayer = L.layerGroup().addTo(map);
+  function radio(name) { var r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : null; }
+  function setRadio(name, value) { var r = document.querySelector('input[name="' + name + '"][value="' + value + '"]'); if (r && !r.disabled) r.checked = true; }
+  function planMsg(text) { el('planMsg').textContent = text; el('planMsg').hidden = !text; }
+  function planStartPoint() {
+    var k = radio('planStart');
+    if (k === 'hjem') return home ? [home.lat, home.lng] : null;
+    if (k === 'gps') return gps.last ? gps.last.slice() : null;
+    if (k === 'punkt') return plan.point ? plan.point.slice() : state.pts.length ? state.pts[0].slice() : null;
+    return null;
+  }
+  function planStartUI() {
+    el('ps-hjem').disabled = !home;
+    el('ps-gps').disabled = !gps.last;
+    var k = radio('planStart');
+    if (!k || el('ps-' + k).disabled) { k = home ? 'hjem' : gps.last && !isCoarse() ? 'gps' : 'punkt'; setRadio('planStart', k); }
+    var msg = '';
+    if (k === 'hjem') msg = 'Starter og slutter hjemme.';
+    else if (k === 'gps') msg = 'Starter og slutter der du står nå' + (isCoarse() ? ', men posisjonen er omtrentlig (' + accText(gps.acc) + ').' : '.');
+    else msg = plan.point ? 'Starter og slutter i punktet du valgte.' : state.pts.length ? 'Starter og slutter der ruta di starter nå.' : 'Velg et punkt på kartet først.';
+    if (!home) msg += ' Hjem er ikke satt ennå.';
+    if (!gps.last) msg += ' Slå på Min posisjon for å starte der du står.';
+    el('planStartMsg').textContent = msg;
+    el('planPick').hidden = k !== 'punkt';
+  }
+  function planLevelUI() {
+    var lv = LEVELS[radio('planLevel')], unit = radio('planUnit');
+    if (!plan.touched.pace) el('planPace').value = fmtPace(lv.pace);
+    if (!plan.touched.len) el('planLen').value = unit === 'km' ? num(lv.km) : String(Math.round(lv.km * lv.pace / 5) * 5);
+    el('planHint').textContent = 'Forslag for ' + lv.name + ': ' + num(lv.km) + ' km i ' + fmtPace(lv.pace) + ' min/km. Du kan endre begge.' + lv.tip;
+  }
+  function openPlan() {
+    planStartUI(); planLevelUI();
+    el('planSheet').hidden = false;
+    loadWx(); loadSnow(); condUI();
+  }
+  function planPicked(p) {
+    plan.picking = false; plan.point = p;
+    planLayer.clearLayers();
+    L.marker(p, { interactive: false, keyboard: false,
+      icon: L.divIcon({ className: 'hit', html: '<div class="pt pick"></div>', iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(planLayer);
+    if (toastKind === 'pick') el('toast').hidden = true;
+    setRadio('planStart', 'punkt');
+    openPlan();
+  }
+  var prefs = readJSON(KEY_PLAN);
+  if (prefs) {
+    setRadio('planLevel', prefs.level); setRadio('planGoal', prefs.goal); setRadio('planUnit', prefs.unit);
+    if (prefs.len) { el('planLen').value = prefs.len; plan.touched.len = !!prefs.tLen; }
+    if (prefs.pace) { el('planPace').value = prefs.pace; plan.touched.pace = !!prefs.tPace; }
+    if (prefs.use === false) el('planUse').checked = false;
+  }
+  el('planUse').addEventListener('change', condUI);
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="planFore"]'), function (r) { r.addEventListener('change', condUI); });
+  el('planBtn').addEventListener('click', openPlan);
+  el('planClose').addEventListener('click', function () { el('planSheet').hidden = true; });
+  el('planSheet').addEventListener('click', function (e) { if (e.target === el('planSheet')) el('planSheet').hidden = true; });
+  el('planPick').addEventListener('click', function () {
+    el('planSheet').hidden = true;
+    plan.picking = true;
+    toast('Trykk på kartet der turen skal starte og slutte.', 'pick');
+  });
+  el('planLen').addEventListener('input', function () { plan.touched.len = true; });
+  el('planPace').addEventListener('input', function () { plan.touched.pace = true; });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="planStart"]'), function (r) { r.addEventListener('change', function () { planStartUI(); condUI(); }); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="planLevel"]'), function (r) { r.addEventListener('change', planLevelUI); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="planUnit"]'), function (r) {
+    r.addEventListener('change', function () {
+      var v = parseFloat(el('planLen').value.replace(',', '.')), pc = parsePace(el('planPace').value);
+      if (plan.touched.len && v > 0 && pc) el('planLen').value = r.value === 'min' ? String(Math.round(v * pc)) : num(Math.round(v / pc * 10) / 10);
+      planLevelUI();
+    });
+  });
+  function darkNote(start, minutes) {
+    var now = new Date(), t = sunTimes(now, start[0], start[1]);
+    if (!t || !t.dusk) return '';
+    if (now > t.dusk || now < t.rise) return 'Det er mørkt nå. Ta med lys.';
+    var end = now.getTime() + minutes * 60000;
+    if (end > t.dusk.getTime()) return 'Du rekker ikke tilbake før det er mørkt (ca. ' + hm(t.dusk) + '). Ta med lys.';
+    if (end > t.set.getTime()) return 'Sola går ned underveis (ca. ' + hm(t.set) + ').';
+    return '';
+  }
+  function planWorking(on) {
+    el('planWork').hidden = !on;
+    el('planGo').disabled = on;
+  }
+  function chooseTour(c, name, paceMin, D) {
+    pushHist();
+    var step = Math.max(600, c.total / 11), idx = [0], last = 0;
+    for (var d = step; d < c.total - step / 2; d += step) {   // stoppunkter jevnt langs runden, så formen holder seg når ruta tegnes på nytt
+      var i = Plan.indexAt(c.cum, d);
+      if (i > last && i < c.path.length - 1) { idx.push(i); last = i; }
+    }
+    idx.push(c.path.length - 1);
+    var pts = idx.map(function (i2, k2) { return k2 === 0 || k2 === idx.length - 1 ? c.start.slice() : c.path[i2].slice(); });
+    for (var k = 0; k < pts.length - 1; k++) cache[keyOf(pts[k], pts[k + 1])] = { status: 'ok', coords: c.path.slice(idx[k], idx[k + 1] + 1) };
+    state.pts = pts; state.snap = true; state.pace = paceMin; state.goal = Math.round(D / 100) / 10; state.name = name;
+    snap.checked = true; pace.value = fmtPace(paceMin); goal.value = state.goal;
+    planLayer.clearLayers();
+    el('planSheet').hidden = true;
+    refresh(); fit();
+  }
+  function showTours(res, start, paceMin, D) {
+    var list = el('planCards'), used = {};
+    list.textContent = '';
+    res.tours.forEach(function (c, n) {
+      var via = c.turnName && c.turnName !== c.startName ? c.turnName : '';
+      var name = 'Runde ' + Plan.compass(c.bearing) + (via ? ' via ' + via : '');
+      used[name] = (used[name] || 0) + 1;
+      if (used[name] > 1) name += ' (' + used[name] + ')';
+      var mins = c.total / 1000 * paceMin, dark = darkNote(start, mins);
+      var li = document.createElement('li'), b = document.createElement('button'), box = document.createElement('div');
+      b.type = 'button'; b.className = 'tur';
+      b.innerHTML = '<svg viewBox="0 0 56 56" aria-hidden="true"><polyline points="' + Plan.outline(c.path, 56) + '"/></svg>';
+      function line(cls, text) { var e = document.createElement(cls === 'b' ? 'b' : 'span'); if (cls !== 'b') e.className = cls; e.textContent = text; box.appendChild(e); }
+      if (n === 0 && res.tours.length > 1) line('tag', res.cond && res.cond.use ? 'Passer best i dag' : 'Passer målet best');
+      line('b', name);
+      line('', km(c.total) + ' km · ' + (c.elev ? '↑ ' + Math.round(c.elev.up) + ' m' : 'høyde ikke tilgjengelig') + ' · ca. ' + fmtTime(mins));
+      line('sub', c.surf ? surfLine(c.surf) || 'Underlag ikke tilgjengelig' : 'Underlag ikke tilgjengelig');
+      line('sub', c.repeated >= 50 ? 'Ca. ' + Math.round(c.repeated / 10) * 10 + ' m går samme vei to ganger.' : 'Ingen strekning går samme vei to ganger.');
+      if (res.cond && res.cond.use && res.local) {
+        var ex = Cond.explain(c, res.cond);
+        if (ex.why.length) line('why', 'Valgt fordi: ' + ex.why.join(', '));
+        if (ex.unmet.length) line('unmet', 'Ikke oppfylt: ' + ex.unmet.join(', '));
+        c.unmet = ex.unmet.length;
+      }
+      if (dark) line('warn', dark);
+      b.appendChild(box);
+      b.addEventListener('click', function () { chooseTour(c, name, paceMin, D); });
+      li.appendChild(b); list.appendChild(li);
+    });
+  }
+  function runPlan(start, D, paceMin, goalKey) {
+    var tok = { cancel: false };
+    plan.tok = tok;
+    el('planCards').textContent = '';
+    planMsg('');
+    planWorking(true);
+    el('planWork').scrollIntoView({ block: 'nearest' });
+    function progress(f, text) { if (tok.cancel) return; el('planFill').style.width = Math.round(f * 100) + '%'; el('planProgress').textContent = text; }
+    var cond = currentCond(start, D / 1000 * paceMin), notes = [], job;
+    el('planTips').hidden = true;
+    if (cond.use && D <= 16000) {
+      job = makeToursLocal(start, D, goalKey, cond, tok, progress).catch(function () {
+        if (tok.cancel) return null;
+        notes.push('Kartdata om veier, lys og skiløyper svarte ikke nå. Rundene er laget som før, uten hensyn til føre, lys og vind.');
+        return makeTours(start, D, goalKey, tok, progress);
+      });
+    } else {
+      if (cond.use) notes.push('Runder over 16 km lages som før, uten hensyn til føre, lys og vind.');
+      job = makeTours(start, D, goalKey, tok, progress);
+    }
+    job.then(function (res) {
+      if (!res || tok.cancel) return;
+      planWorking(false);
+      res.cond = cond;
+      var want = num(Math.round(D / 100) / 10);
+      if (!res.tours.length) {
+        return planMsg(res.reason === 'net' ? 'Rutetjenesten svarer ikke akkurat nå. Prøv igjen om litt.'
+          : 'Fant ingen runde på ca. ' + want + ' km herfra. Veiene rundt startpunktet gir ikke en runde i den lengden. Prøv en annen lengde eller et annet startpunkt.');
+      }
+      if (res.tours.length < 3) notes.push('Fant bare ' + (res.tours.length === 1 ? 'én runde' : 'to runder') + ' på ca. ' + want + ' km som er tydelig forskjellige herfra.');
+      showTours(res, start, paceMin, D);
+      if (cond.use && res.local) {
+        if (res.tours.every(function (q) { return q.unmet > 0; })) notes.unshift('Ingen runde passer forholdene helt. Dette er de beste jeg fant, og kortene sier hva som ikke ble oppfylt.');
+        if (cond.dark && res.litKnown < 0.3) notes.push('Kartdataene sier lite om lys her: bare ' + Math.round(res.litKnown * 100) + ' % av veiene har opplysning om det.');
+      }
+      var tips = cond.use ? Cond.tips(cond) : '';
+      el('planTips').textContent = tips;
+      el('planTips').hidden = !tips;
+      planMsg(notes.join(' '));
+      el('planCards').scrollIntoView({ block: 'start' });   // forslagene ligger under skjemaet
+    }).catch(function () {
+      if (tok.cancel) return;
+      planWorking(false);
+      planMsg('Noe gikk galt mens jeg lette etter runder. Prøv igjen.');
+    });
+  }
+  el('planCancel').addEventListener('click', function () { if (plan.tok) plan.tok.cancel = true; planWorking(false); planMsg('Avbrutt.'); });
+  el('planForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var start = planStartPoint(), unit = radio('planUnit'), goalKey = radio('planGoal');
+    var paceMin = parsePace(el('planPace').value), len = parseFloat(el('planLen').value.replace(',', '.'));
+    if (!start) return planMsg('Velg hvor turen skal starte.');
+    if (!paceMin) return planMsg('Skriv tempoet som minutter per kilometer, for eksempel 7:30.');
+    if (!(len > 0)) return planMsg(unit === 'km' ? 'Skriv hvor mange kilometer du vil løpe.' : 'Skriv hvor mange minutter du vil løpe.');
+    var D = unit === 'km' ? len * 1000 : len / paceMin * 1000;
+    if (D < 1000 || D > 30000) return planMsg((unit === 'min' ? 'Det tilsvarer ' + num(Math.round(D / 100) / 10) + ' km. ' : '') + 'Velg en lengde mellom 1 og 30 km.');
+    writeJSON(KEY_PLAN, { level: radio('planLevel'), goal: goalKey, unit: unit, len: el('planLen').value, pace: el('planPace').value,
+      tLen: plan.touched.len, tPace: plan.touched.pace, use: el('planUse').checked });
+    function go() { runPlan(start, D, paceMin, goalKey); }
+    if (radio('planStart') === 'gps' && isCoarse()) ask('Posisjonen er omtrentlig (' + accText(gps.acc) + '). Vil du lage turer derfra likevel?', 'Bruk den likevel', go);
+    else go();
   });
 
   // ---------- Hold skjermen våken mens posisjon er på ----------
@@ -976,12 +2225,17 @@
     if (state.pts.length < 2) return;
     if (location.protocol !== 'https:') return toast('Lenka virker først når siden ligger på en https-adresse. Denne kopien er åpnet som fil, så andre kan ikke åpne den.');
     var url = shareUrl(), title = state.name || 'Løperute i Trysil';
-    if (navigator.share) {
-      navigator.share({ title: title, text: title + ', ' + km(R.total) + ' km', url: url }).catch(function () {});
-    } else if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(function () { toast('Lenka er kopiert. Lim den inn der du vil dele ruta.'); },
-        function () { toast('Kopier lenka: ' + url); });
-    } else toast('Kopier lenka: ' + url);
+    function go() {
+      if (navigator.share) {
+        navigator.share({ title: title, text: title + ', ' + km(R.total) + ' km', url: url }).catch(function () {});
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () { toast('Lenka er kopiert. Lim den inn der du vil dele ruta.'); },
+          function () { toast('Kopier lenka: ' + url); });
+      } else toast('Kopier lenka: ' + url);
+    }
+    var atHome = home && state.pts.some(function (q) { return map.distance(q, [home.lat, home.lng]) < 50; });
+    if (atHome) ask('Ruta går innom Hjem. Den du deler med, ser hvor det er. Vil du dele likevel?', 'Del likevel', go);
+    else go();
   });
   function applyHash(first) {
     var m = /^#rute=([vl])([A-Za-z0-9_-]+)$/.exec(location.hash);
@@ -1012,6 +2266,7 @@
   }
   applyHash(true);
   setCollapsed(state.collapsed);
+  drawHome(); homeUI();
   gpsUI();
   buildMarkers(); draw();
   save();
