@@ -126,6 +126,15 @@
   #ask { z-index: 1300; }
   #ask p { margin: 0; font-size: 16px; line-height: 1.45; }
   .primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+  #road { display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.4; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  #roadWarn, #avoidList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #roadWarn li, #avoidList li { display: flex; align-items: center; gap: 8px; }
+  #roadWarn li span { flex: 1; color: var(--over); font-weight: 600; }
+  #roadWarn li.mild span { color: inherit; font-weight: 400; }
+  #avoidList li div { flex: 1; min-width: 0; }
+  #avoidList li b { display: block; overflow-wrap: anywhere; }
+  #avoidList li span { font-size: 13px; color: var(--muted); }
+  #about { margin-top: 10px; }
   .note { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.45; }
   .msg { font-size: 14px; margin: 0; line-height: 1.45; }
   .msg.bad { color: var(--over); font-weight: 600; }
@@ -228,6 +237,7 @@
       <div class="row">
         <button type="button" id="homeStartBtn">Start hjemme</button>
         <button type="button" id="homeBtn">Hjem</button>
+        <button type="button" id="avoidBtn">Unngå</button>
       </div>
       <div class="row">
         <button type="button" id="routesBtn">Ruter</button>
@@ -241,6 +251,10 @@
         <div id="profAxis" hidden><span>0 km</span><span id="profRange"></span><span id="profEnd"></span></div>
         <div id="surf" hidden><div id="surfBar" aria-hidden="true"></div><span id="surfText"></span></div>
       </div>
+      <div id="road" hidden>
+        <span id="roadText"></span>
+        <ul id="roadWarn"></ul>
+      </div>
       <div id="info">
         <span id="sunText"></span>
         <span id="wxText"></span>
@@ -251,6 +265,7 @@
         <label class="field" for="pace">Tempo <input type="text" id="pace" value="7:30" inputmode="text" autocomplete="off" aria-describedby="paceUnit"> <span id="paceUnit">min/km</span></label>
       </div>
       <label class="snap" for="snap"><input type="checkbox" id="snap" checked> Følg vei og sti</label>
+      <p class="note" id="about"></p>
     </div>
   </section>
 </div>
@@ -295,6 +310,7 @@
         <p class="msg" id="condLine"></p>
         <p class="msg" id="bestLine"></p>
         <label class="snap" for="planUse"><input type="checkbox" id="planUse" checked> Ta hensyn til vær og føre</label>
+        <p class="note" id="useNote" hidden>Av: rundene lages av veisøket som før, uten føre, vind, lys, veikunnskap og Unngå-merkene dine.</p>
         <fieldset id="foreSet">
           <legend>Føre</legend>
           <div class="seg">
@@ -357,7 +373,28 @@
     </div>
     <p class="msg bad" id="planMsg" role="alert" hidden></p>
     <p class="msg" id="planTips" hidden></p>
+    <p class="note" id="planCover" hidden></p>
     <ul id="planCards"></ul>
+  </div>
+</div>
+
+<div id="holdSheet" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="holdTitle">
+    <div class="top"><h2 id="holdTitle">Her på kartet</h2><button type="button" id="holdClose">Lukk</button></div>
+    <div class="row">
+      <button type="button" id="holdHome">Sett Hjem her</button>
+      <button type="button" id="holdAvoid">Unngå her</button>
+    </div>
+    <p class="note">Hjem og Unngå lagres bare i denne nettleseren.</p>
+  </div>
+</div>
+
+<div id="avoidSheet" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="avoidTitle">
+    <div class="top"><h2 id="avoidTitle">Unngå</h2><button type="button" id="avoidClose">Lukk</button></div>
+    <p class="msg" id="avoidMsg"></p>
+    <ul id="avoidList"></ul>
+    <p class="note">Hold fingeren på en vei eller sti på kartet (høyreklikk på PC) og velg «Unngå her». Strekningen merkes fra kryss til kryss. Turforslagene holder seg unna når «Ta hensyn til vær og føre» er på, og du får et varsel hvis en rute du tegner selv går der. Merkene lagres bare i denne nettleseren.</p>
   </div>
 </div>
 
@@ -381,7 +418,8 @@
   var VALHALLA = 'https://valhalla1.openstreetmap.de/trace_attributes', VALHALLA_ROUTE = 'https://valhalla1.openstreetmap.de/route';
   var MET = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
   var KEY_RUN = 'trysil-lopekart-tur-v1', TRYSIL = [61.3149, 12.2632];
-  var KEY_HOME = 'trysil-lopekart-hjem-v1', KEY_PLAN = 'trysil-lopekart-turvalg-v1';
+  var KEY_HOME = 'trysil-lopekart-hjem-v1', KEY_PLAN = 'trysil-lopekart-turvalg-v1', KEY_AVOID = 'trysil-lopekart-unnga-v1';
+  var VERSION = '2026-11-17';   // dato for denne utgaven, vises nederst i panelet
   var ADR = 'https://ws.geonorge.no/adresser/v1/sok';
   var SNOW = 'https://api.open-meteo.com/v1/forecast';   // snødybde fra værmodell, uten nøkkel
   var OVERPASS = ['https://overpass.openstreetmap.fr/api/interpreter', 'https://overpass-api.de/api/interpreter'];   // kartdata om veier, lys og skiløyper
@@ -588,7 +626,7 @@
         next += 1000;
       }
     }
-    if (!dragging) { scheduleElev(); scheduleSurf(); if (!pending && state.snap && path.length) save(); }
+    if (!dragging) { scheduleElev(); scheduleSurf(); scheduleRoad(); if (!pending && state.snap && path.length) save(); }
     render();
   }
 
@@ -712,6 +750,108 @@
     var bits = [];
     ['asfalt', 'grus', 'sti'].forEach(function (k) { if (parts[k] >= 50) bits.push(k + ' ' + (parts[k] / 1000).toFixed(1).replace('.', ',') + ' km'); });
     return bits.join(' · ');
+  }
+
+  // ---------- Unngå: din egen lokalkunnskap, lagret bare i denne nettleseren ----------
+  var avoid = readJSON(KEY_AVOID), avoidRev = 0, avoidLayer = L.layerGroup().addTo(map);
+  avoid = Array.isArray(avoid) ? avoid.filter(function (a) { return a && Array.isArray(a.pts) && a.pts.length > 1; }) : [];
+  function drawAvoid() {
+    avoidLayer.clearLayers();
+    avoid.forEach(function (a) {
+      L.polyline(a.pts, { color: '#fff', weight: 9, opacity: .9, interactive: false }).addTo(avoidLayer);
+      L.polyline(a.pts, { color: '#3a3f3c', weight: 5, opacity: .95, dashArray: '2 9', interactive: false }).addTo(avoidLayer);
+    });
+    el('avoidBtn').textContent = avoid.length ? 'Unngå (' + avoid.length + ')' : 'Unngå';
+  }
+  function saveAvoid() {
+    avoidRev++;
+    if (!writeJSON(KEY_AVOID, avoid)) toast('Nettleseren lar ikke siden lagre merket. Privat modus kan sperre for dette.');
+    drawAvoid(); renderAvoid(); scheduleRoad();
+  }
+  function renderAvoid() {
+    var list = el('avoidList');
+    list.textContent = '';
+    el('avoidMsg').textContent = avoid.length ? 'Turforslagene holder seg unna disse strekningene:' : 'Du har ikke merket noen strekninger ennå.';
+    avoid.forEach(function (a) {
+      var li = document.createElement('li'), box = document.createElement('div'), b = document.createElement('b'), sp = document.createElement('span');
+      var show = document.createElement('button'), del = document.createElement('button');
+      b.textContent = a.name; sp.textContent = Net.dist(a.m) + ' · merket ' + new Date(a.at).toLocaleDateString('nb-NO');
+      box.appendChild(b); box.appendChild(sp);
+      show.type = del.type = 'button'; show.className = del.className = 'small'; show.textContent = 'Vis'; del.textContent = 'Fjern';
+      show.addEventListener('click', function () { el('avoidSheet').hidden = true; map.fitBounds(L.latLngBounds(a.pts).pad(0.4), { maxZoom: 17 }); });
+      del.addEventListener('click', function () { avoid = avoid.filter(function (x) { return x.id !== a.id; }); saveAvoid(); });
+      li.appendChild(box); li.appendChild(show); li.appendChild(del); list.appendChild(li);
+    });
+  }
+  function addAvoid(ll) {
+    toast('Finner strekningen…');
+    mapBox(boxAround(ll, 900)).then(function (M) {
+      var st = Net.stretch(M.G, ll);
+      if (!st) return toast('Fant ingen vei eller sti innen 40 m fra der du trykket. Prøv nærmere veien.');
+      var item = { id: Date.now().toString(36), name: st.name, m: Math.round(st.m), at: new Date().toISOString(),
+        pts: st.pts.map(function (q) { return [+q[0].toFixed(6), +q[1].toFixed(6)]; }) };
+      avoid.push(item); saveAvoid();
+      toast('Unngår ' + item.name + ' (' + Net.dist(item.m) + '). Turforslagene holder seg unna.', '', { label: 'Angre', fn: function () {
+        avoid = avoid.filter(function (x) { return x.id !== item.id; }); saveAvoid(); } });
+    }).catch(function () { toast('Kartdata svarte ikke, så jeg finner ikke strekningen nå. Prøv igjen om litt.'); });
+  }
+  el('avoidBtn').addEventListener('click', function () { renderAvoid(); el('avoidSheet').hidden = false; });
+  el('avoidClose').addEventListener('click', function () { el('avoidSheet').hidden = true; });
+  el('avoidSheet').addEventListener('click', function (e) { if (e.target === el('avoidSheet')) el('avoidSheet').hidden = true; });
+
+  // ---------- Veisjekk for ruta du har tegnet: varsler, men lar deg bestemme ----------
+  var road = { status: 'none', key: null }, roadTimer = null, warnLayer = L.layerGroup().addTo(map);
+  function scheduleRoad() {
+    clearTimeout(roadTimer);
+    if (!state.snap || R.path.length < 2 || R.total < 20) { road = { status: 'none', key: null }; warnLayer.clearLayers(); return; }
+    if (R.pending) return;
+    var key = elevKey() + '|' + avoidRev;
+    if (key === road.key) return;
+    road = { status: 'loading', key: key };
+    warnLayer.clearLayers();
+    roadTimer = setTimeout(function () { loadRoad(key); }, 700);
+  }
+  function loadRoad(key) {
+    var box = { s: 90, n: -90, w: 180, e: -180 }, path = R.path;
+    path.forEach(function (q) { box.s = Math.min(box.s, q[0]); box.n = Math.max(box.n, q[0]); box.w = Math.min(box.w, q[1]); box.e = Math.max(box.e, q[1]); });
+    if (box.n - box.s > 0.14 || box.e - box.w > 0.30) { road = { status: 'big', key: key }; return render(); }   // over ca. 16 km: for stort kartutsnitt
+    box.s -= 0.0015; box.n += 0.0015; box.w -= 0.003; box.e += 0.003;
+    mapBox(box).then(function (M) {
+      if (road.key !== key) return;
+      var cond = { fore: 'bart', dark: false };
+      try { cond = currentCond(path[0], R.total / 1000 * state.pace); } catch (e) {}
+      var tr = Net.trace(M.G, path), mask = avoid.length ? Net.mark(M.G, avoid.map(function (a) { return a.pts; }), 12) : null;
+      var info = Net.describe(M.G, { pieces: tr.pieces }, cond, { avoid: mask });
+      road = { status: 'ok', key: key, info: info, miss: tr.miss, total: R.total, warns: Net.warnings(info) };
+      road.warns.forEach(function (w) {
+        L.polyline(w.pts, { color: w.kind === 'risk1' ? '#f2b705' : '#ff7a00', weight: 13, opacity: .75, interactive: false }).addTo(warnLayer).bringToBack();
+      });
+      render();
+    }).catch(function () {
+      if (road.key !== key) return;
+      road = { status: 'fail', key: key };
+      render();
+    });
+  }
+  function renderRoad() {
+    var box = el('road'), txt = el('roadText'), list = el('roadWarn');
+    box.hidden = road.status === 'none';
+    list.textContent = '';
+    if (road.status === 'loading') txt.textContent = 'Sjekker veiene…';
+    else if (road.status === 'fail') txt.textContent = 'Veisjekk ikke tilgjengelig: kartdata svarte ikke.';
+    else if (road.status === 'big') txt.textContent = 'Ruta er for lang til veisjekk.';
+    else if (road.status === 'ok') {
+      var line = Net.roadLine(road.info) || 'Veier: ikke gjenkjent i kartdataene';
+      if (road.miss > 0.15 * road.total) line += ' · ' + Net.dist(road.miss) + ' ikke gjenkjent i kartdataene';
+      txt.textContent = line + (road.warns.length ? '' : ' · ingen varsler fra kartdataene');
+      road.warns.forEach(function (w) {
+        var li = document.createElement('li'), sp = document.createElement('span'), b = document.createElement('button');
+        if (w.kind === 'risk1') li.className = 'mild';
+        sp.textContent = 'Obs: ' + w.text; b.type = 'button'; b.className = 'small'; b.textContent = 'Vis';
+        b.addEventListener('click', function () { map.fitBounds(L.latLngBounds(w.pts).pad(0.5), { maxZoom: 17, paddingBottomRight: [0, 160] }); });
+        li.appendChild(sp); li.appendChild(b); list.appendChild(li);
+      });
+    }
   }
 
   // ---------- Sol (regnes ut lokalt) og vær (MET Norge) ----------
@@ -884,6 +1024,7 @@
       stx.textContent = 'Underlag (anslag): ' + bits.join(' · ');
     }
     el('shareBtn').disabled = n < 2;
+    renderRoad();
 
     el('sunText').textContent = sunLine();
     el('wxText').textContent = wx.status === 'ok' ? wx.text : wx.status === 'fail' ? 'Vær ikke tilgjengelig' : wx.text || 'Henter vær…';
@@ -894,12 +1035,21 @@
   var holdAt = 0;
   map.on('contextmenu', function (e) {
     holdAt = Date.now();
-    var ll = e.latlng;
+    holdLL = e.latlng;
+    el('holdSheet').hidden = false;
+  });
+  var holdLL = null;
+  el('holdClose').addEventListener('click', function () { el('holdSheet').hidden = true; });
+  el('holdSheet').addEventListener('click', function (e) { if (e.target === el('holdSheet')) el('holdSheet').hidden = true; });
+  el('holdHome').addEventListener('click', function () {
+    var ll = holdLL;
+    el('holdSheet').hidden = true;
     ask('Vil du sette Hjem her? Punktet lagres bare i denne nettleseren.', 'Sett Hjem', function () {
       setHome({ lat: ll.lat, lng: ll.lng, label: 'punktet du valgte på kartet' });
       toast('Hjem er lagret i denne nettleseren.');
     });
   });
+  el('holdAvoid').addEventListener('click', function () { el('holdSheet').hidden = true; addAvoid([holdLL.lat, holdLL.lng]); });
   map.on('click', function (e) {
     if (Date.now() - holdAt < 700) return;   // slipp etter langt trykk skal ikke bli et rutepunkt
     if (plan.picking) return planPicked([e.latlng.lat, e.latlng.lng]);
@@ -1266,25 +1416,100 @@
     var RAD = Math.PI / 180;
     var WALK = { residential: 1, unclassified: 1, tertiary: 1, tertiary_link: 1, secondary: 1, secondary_link: 1, primary: 1, primary_link: 1,
       trunk: 1, trunk_link: 1, service: 1, living_street: 1, pedestrian: 1, road: 1, cycleway: 1, footway: 1, path: 1, track: 1, steps: 1, bridleway: 1 };
+    var NOGO = { motorway: 'gaaende', motorway_link: 'gaaende', construction: 'bygging' };   // tas med i kartet bare for å kunne varsle
+    var MAIN = { trunk: 1, trunk_link: 1, primary: 1, primary_link: 1, secondary: 1, secondary_link: 1, tertiary: 1, tertiary_link: 1 };
+    var KIND = { footway: 'gs', cycleway: 'gs', pedestrian: 'gs', path: 'sti', bridleway: 'sti', steps: 'sti', track: 'skog', residential: 'bolig', living_street: 'bolig',
+      service: 'atkomst', unclassified: 'vei', road: 'vei' };
+    var KEEP = ['highway', 'name', 'ref', 'surface', 'lit', 'foot', 'access', 'service', 'maxspeed', 'sidewalk', 'sidewalk:left', 'sidewalk:right', 'sidewalk:both', 'shoulder',
+      'motorroad', 'winter_service', 'seasonal', 'ford', 'sac_scale', 'trail_visibility', 'smoothness', 'bicycle', 'piste:type', 'piste:grooming', 'route',
+      'access:conditional', 'foot:conditional', 'vehicle:conditional', 'motor_vehicle:conditional'];
     var HARD = /^(asphalt|paved|concrete|concrete:plates|concrete:lanes|paving_stones|sett|cobblestone|chipseal|metal)$/;
     var LOOSE = /^(gravel|fine_gravel|compacted|unpaved|pebblestone)$/, LIT = /^(yes|24\/7|automatic|limited|sunset-sunrise|dusk-dawn)$/;
-    function blocked(t) {
-      var foot = t.foot || '';
-      if (foot === 'no') return true;
-      return (t.access === 'private' || t.access === 'no') && !/^(yes|designated|permissive)$/.test(foot);
+    var OPEN = /^(yes|designated|permissive|official)$/, SHUT = /^(private|customers|delivery|permit|destination|residents)$/;
+    var SOFT = { privat: 1, innkjorsel: 1 };   // brukes bare for å komme ut fra der du starter, aldri som gjennomgang
+    var ACC = { gaaende: 'der kartet sier forbudt for gående', stengt: 'der kartet sier stengt', bygging: 'på vei under bygging', ferje: 'med ferje',
+      sidesti: 'der gående skal bruke gang- og sykkelveien ved siden av', privat: 'merket privat eller bare for adkomst', innkjorsel: 'i privat innkjørsel',
+      unnga: 'som du har merket «Unngå»', vinter: 'som er vinterstengt eller ikke brøytes ifølge kartet', krevende: 'som krever vading eller er merket krevende' };
+    var BASE = { gs: 'gang- og sykkelvei', sti: 'sti', skog: 'skogsvei', bolig: 'boligvei', atkomst: 'atkomstvei', vei: 'småvei', bil: 'bilvei' };
+    function access(t) {   // '' betyr at kartet ikke sier noe som stenger for gående. Det er ikke det samme som at det er lov.
+      var h = t.highway, f = t.foot || '', a = t.access || '';
+      if (t.route === 'ferry') return 'ferje';
+      if (NOGO[h]) return NOGO[h];
+      if (t.motorroad === 'yes' || f === 'no') return 'gaaende';
+      if (f === 'use_sidepath') return 'sidesti';
+      if (OPEN.test(f)) return '';
+      if (f === 'military' || a === 'no' || a === 'military') return 'stengt';
+      if (SHUT.test(f) || SHUT.test(a)) return 'privat';
+      if (h === 'service' && t.service === 'driveway') return 'innkjorsel';
+      return '';
+    }
+    function speedOf(t) {   // 0 = ukjent
+      var m = t.maxspeed || '';
+      if (/^\d+$/.test(m)) return +m;
+      if (m === 'NO:urban') return 50;
+      if (m === 'NO:rural') return 80;
+      return 0;
+    }
+    function sideOf(t) {   // 1 = fortau eller skulder er merket, 0 = merket uten, -1 = ukjent
+      var yes = /^(yes|both|left|right|separate)$/, s = t.sidewalk || '';
+      if (yes.test(s) || yes.test(t['sidewalk:both'] || '') || yes.test(t['sidewalk:left'] || '') || yes.test(t['sidewalk:right'] || '') || yes.test(t.shoulder || '')) return 1;
+      if (/^(no|none)$/.test(s) || t['sidewalk:both'] === 'no' || (t['sidewalk:left'] === 'no' && t['sidewalk:right'] === 'no')) return 0;
+      return -1;
     }
     function isPiste(t) { return !!t['piste:type'] && t['piste:type'] !== 'connection' && t['piste:grooming'] !== 'backcountry'; }
-    function classify(t) {   // underlag, brøyting og lys, slik veien er merket. Mangler merking, antas det ut fra veitypen.
+    function classify(t) {   // slik veien er merket i kartet. Mangler merking, antas underlag og brøyting ut fra veitypen; fart, fortau og adgang står som ukjent.
       var h = t.highway, sf = t.surface || '', surf;
       if (HARD.test(sf)) surf = 'asfalt'; else if (LOOSE.test(sf)) surf = 'grus'; else if (sf) surf = 'sti';
       else surf = h === 'path' || h === 'bridleway' || h === 'steps' ? 'sti' : h === 'track' ? 'grus' : 'asfalt';
       var small = h === 'path' || h === 'track' || h === 'bridleway' || h === 'steps' || (h === 'footway' && surf === 'sti');
       var plow = t.winter_service === 'yes' || (!small && t.winter_service !== 'no');
-      return { surf: surf, plow: plow, lit: LIT.test(t.lit || '') ? 1 : t.lit === 'no' ? 0 : -1, name: t.name || '' };
+      var kind = KIND[h] || (MAIN[h] ? 'bil' : 'vei');
+      if (h === 'path' && surf === 'asfalt' && (t.foot === 'designated' || t.bicycle === 'designated')) kind = 'gs';
+      var cnd = [t['access:conditional'], t['foot:conditional'], t['vehicle:conditional'], t['motor_vehicle:conditional']].join(' ');
+      var winter = t.winter_service === 'no' || /summer/.test(t.seasonal || '') || (/no\s*@/.test(cnd) && /winter|snow|Nov|Dec|Jan|Feb|Mar/i.test(cnd));
+      var tough = t.ford === 'yes' || /^(demanding_mountain_hiking|alpine_hiking|demanding_alpine_hiking|difficult_alpine_hiking)$/.test(t.sac_scale || '') ||
+        /^(bad|horrible|no)$/.test(t.trail_visibility || '') || /^(very_horrible|horrible|impassable)$/.test(t.smoothness || '');
+      return { surf: surf, plow: plow, lit: LIT.test(t.lit || '') ? 1 : t.lit === 'no' ? 0 : -1, name: t.name || (t.ref ? 'vei ' + t.ref : ''), kind: kind,
+        car: kind === 'bolig' || kind === 'atkomst' || kind === 'vei' || kind === 'bil', main: !!MAIN[h], speed: speedOf(t), side: sideOf(t), acc: access(t),
+        winter: winter, tough: tough, sfk: !!sf, ack: t.foot !== undefined || t.access !== undefined };
+    }
+    function pack(osm) {   // bare det appen bruker, så det tar liten plass når det lagres i nettleseren
+      if (osm.els) return osm;
+      var els = [];
+      (osm.elements || []).forEach(function (el) {
+        var g = el.geometry, t = el.tags || {}, o = {}, flat = [];
+        if (!g || g.length < 2) return;
+        KEEP.forEach(function (k) { if (t[k] !== undefined) o[k] = t[k]; });
+        for (var i = 0; i < g.length; i++) flat.push(+g[i].lat.toFixed(7), +g[i].lon.toFixed(7));
+        els.push({ t: o, g: flat });
+      });
+      return { els: els };
+    }
+    function grid(cell) {   // punkter i ruter, for å finne det som ligger tett inntil noe annet
+      var g = {}, any = false;
+      return {
+        add: function (x, y, ux, uy) { var k = Math.floor(x / cell) + ',' + Math.floor(y / cell); (g[k] || (g[k] = [])).push(x, y, ux || 0, uy || 0); any = true; },
+        any: function () { return any; },
+        near: function (x, y, r, ux, uy) {   // med ux, uy: bare punkter på en linje som går samme vei
+          var cx = Math.floor(x / cell), cy = Math.floor(y / cell), r2 = r * r;
+          for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) {
+            var l = g[(cx + a) + ',' + (cy + b)];
+            if (l) for (var q = 0; q < l.length; q += 4) {
+              if ((l[q] - x) * (l[q] - x) + (l[q + 1] - y) * (l[q + 1] - y) >= r2) continue;
+              if (ux === undefined || Math.abs(ux * l[q + 2] + uy * l[q + 3]) >= 0.85) return true;
+            }
+          }
+          return false;
+        }
+      };
+    }
+    function along(gr, ax, ay, bx, by, step) {   // legg punkter langs en linje i rutenettet
+      var d = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)), n = Math.max(1, Math.ceil(d / step)), ux = d > 0 ? (bx - ax) / d : 0, uy = d > 0 ? (by - ay) / d : 0;
+      for (var j = 0; j <= n; j++) gr.add(ax + (bx - ax) * j / n, ay + (by - ay) * j / n, ux, uy);
     }
     function build(osm, ref) {
-      var kx = 111320 * Math.cos(ref[0] * RAD), ky = 110540, ids = new Map();
-      var G = { ref: ref, kx: kx, ky: ky, lat: [], lng: [], x: [], y: [], adj: [], to: [], len: [], way: [], pst: [], ways: [] };
+      var kx = 111320 * Math.cos(ref[0] * RAD), ky = 110540, ids = new Map(), P = pack(osm);
+      var G = { ref: ref, kx: kx, ky: ky, lat: [], lng: [], x: [], y: [], adj: [], to: [], len: [], way: [], pst: [], par: [], ways: [] };
       function node(lat, lon) {
         var k = lat.toFixed(7) + ',' + lon.toFixed(7), i = ids.get(k);
         if (i === undefined) {
@@ -1293,51 +1518,49 @@
         }
         return i;
       }
-      var pg = {}, cell = 25, hasPiste = false;
-      function pmark(x, y) { var k = Math.floor(x / cell) + ',' + Math.floor(y / cell); (pg[k] || (pg[k] = [])).push(x, y); hasPiste = true; }
-      (osm.elements || []).forEach(function (el) {
-        var t = el.tags || {}, g = el.geometry, i;
-        if (!g || g.length < 2) return;
+      var pg = grid(25), gs = grid(25);
+      P.els.forEach(function (el) {
+        var t = el.t, g = el.g, n = g.length >> 1, i;
+        if (n < 2) return;
         var piste = isPiste(t);
-        if (piste) for (i = 1; i < g.length; i++) {   // punkter hver 10. meter langs skiløypa
-          var ax = (g[i - 1].lon - ref[1]) * kx, ay = (g[i - 1].lat - ref[0]) * ky, bx = (g[i].lon - ref[1]) * kx, by = (g[i].lat - ref[0]) * ky;
-          var n = Math.max(1, Math.ceil(Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) / 10));
-          for (var j = 0; j <= n; j++) pmark(ax + (bx - ax) * j / n, ay + (by - ay) * j / n);
-        }
-        if (!WALK[t.highway] || blocked(t)) return;
-        var w = G.ways.length, prev = node(g[0].lat, g[0].lon);
-        G.ways.push(classify(t));
-        for (i = 1; i < g.length; i++) {
-          var cur = node(g[i].lat, g[i].lon);
+        if (piste) for (i = 1; i < n; i++) along(pg, (g[2 * i - 1] - ref[1]) * kx, (g[2 * i - 2] - ref[0]) * ky, (g[2 * i + 1] - ref[1]) * kx, (g[2 * i] - ref[0]) * ky, 10);
+        if (!WALK[t.highway] && !NOGO[t.highway] && t.route !== 'ferry') return;
+        var w = G.ways.length, c = classify(t), prev = node(g[0], g[1]);
+        G.ways.push(c);
+        for (i = 1; i < n; i++) {
+          var cur = node(g[2 * i], g[2 * i + 1]);
           if (cur !== prev) {
             var dx = G.x[cur] - G.x[prev], dy = G.y[cur] - G.y[prev], d = Math.sqrt(dx * dx + dy * dy), e = G.to.length;
-            G.to.push(cur, prev); G.len.push(d, d); G.way.push(w, w); G.pst.push(piste ? 1 : 0);
+            G.to.push(cur, prev); G.len.push(d, d); G.way.push(w, w); G.pst.push(piste ? 1 : 0); G.par.push(0);
             G.adj[prev].push(e); G.adj[cur].push(e + 1);
+            if (c.kind === 'gs' && !c.acc) along(gs, G.x[prev], G.y[prev], G.x[cur], G.y[cur], 10);
           }
           prev = cur;
         }
       });
-      function nearPiste(x, y) {
-        var cx = Math.floor(x / cell), cy = Math.floor(y / cell);
-        for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) {
-          var l = pg[(cx + a) + ',' + (cy + b)];
-          if (l) for (var q = 0; q < l.length; q += 2) if ((l[q] - x) * (l[q] - x) + (l[q + 1] - y) * (l[q + 1] - y) < 64) return true;
+      for (var p = 0; p < G.pst.length; p++) {
+        var u = G.to[2 * p + 1], v = G.to[2 * p], mx = (G.x[u] + G.x[v]) / 2, my = (G.y[u] + G.y[v]) / 2;
+        // en vei regnes som skiløype der den følger løypa, ikke der den bare krysser
+        if (!G.pst[p] && pg.any() && pg.near(G.x[u], G.y[u], 8) && pg.near(G.x[v], G.y[v], 8) && pg.near(mx, my, 8)) G.pst[p] = 1;
+        // en bilvei har gang- og sykkelvei ved siden av der en slik går parallelt innen 25 m
+        var L = G.len[2 * p], c2 = G.ways[G.way[2 * p]];
+        if (c2.car && L > 1 && gs.any()) {
+          var ux = (G.x[v] - G.x[u]) / L, uy = (G.y[v] - G.y[u]) / L;
+          if (gs.near(G.x[u], G.y[u], 25, ux, uy) && gs.near(G.x[v], G.y[v], 25, ux, uy) && gs.near(mx, my, 25, ux, uy)) G.par[p] = 1;
         }
-        return false;
-      }
-      if (hasPiste) for (var p = 0; p < G.pst.length; p++) {   // en vei regnes som skiløype der den følger løypa, ikke der den bare krysser
-        if (G.pst[p]) continue;
-        var u = G.to[2 * p + 1], v = G.to[2 * p];
-        if (nearPiste(G.x[u], G.y[u]) && nearPiste(G.x[v], G.y[v]) && nearPiste((G.x[u] + G.x[v]) / 2, (G.y[u] + G.y[v]) / 2)) G.pst[p] = 1;
       }
       return G;
     }
-    function snap(G, pt) {   // nærmeste punkt på en vei. Ligger det midt på en strekning, lages et nytt knutepunkt der.
+    function hardBan(w) { return !!w.acc && !SOFT[w.acc]; }
+    function snap(G, pt, skip) {   // nærmeste punkt på en vei som kan brukes. Ligger det midt på en strekning, lages et nytt knutepunkt der.
       var px = (pt[1] - G.ref[1]) * G.kx, py = (pt[0] - G.ref[0]) * G.ky, best = -1, bd = Infinity, bt = 0;
       for (var e = 0; e < G.to.length; e += 2) {
+        var wy = G.ways[G.way[e]];
+        if (hardBan(wy) || (skip && skip[e >> 1])) continue;
         var a = G.to[e + 1], b = G.to[e], ax = G.x[a], ay = G.y[a], dx = G.x[b] - ax, dy = G.y[b] - ay, l2 = dx * dx + dy * dy;
         var t = l2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
         var qx = ax + dx * t - px, qy = ay + dy * t - py, d = qx * qx + qy * qy;
+        if (wy.acc) { d = Math.sqrt(d) + 25; d *= d; }   // privat vei og innkjørsel velges bare når den ligger klart nærmest
         if (d < bd) { bd = d; best = e; bt = t; }
       }
       if (best < 0 || bd > 300 * 300) return -1;
@@ -1349,10 +1572,23 @@
       G.x.push(G.x[u] + (G.x[v] - G.x[u]) * bt); G.y.push(G.y[u] + (G.y[v] - G.y[u]) * bt); G.adj.push([]);
       [[u, bt], [v, 1 - bt]].forEach(function (h) {
         var e2 = G.to.length, d2 = G.len[best] * h[1];
-        G.to.push(h[0], n); G.len.push(d2, d2); G.way.push(G.way[best], G.way[best]); G.pst.push(G.pst[best >> 1]);
+        G.to.push(h[0], n); G.len.push(d2, d2); G.way.push(G.way[best], G.way[best]); G.pst.push(G.pst[best >> 1]); G.par.push(G.par[best >> 1]);
         G.adj[n].push(e2); G.adj[h[0]].push(e2 + 1);
       });
       return n;
+    }
+    function risk(w) {   // langs bilvei: 0 = ingenting kjent som taler mot, 1 = fart eller fortau er ukjent, 2 = høy fart og merket uten fortau
+      if (!w.car || w.side === 1) return 0;
+      if (w.speed >= 60) return w.side === 0 ? 2 : 1;   // «høy fart» er satt til 60 km/t og over. Det er et valg i appen, ikke en grense fra noen kilde.
+      return !w.speed && w.main ? 1 : 0;
+    }
+    function riskFactor(w, cond) {
+      var r = risk(w);
+      if (!r) return 1;
+      var f = w.speed >= 80 ? 5 : w.speed >= 70 ? 4 : w.speed >= 60 ? 3 : 1.8;
+      if (r === 1 && w.speed) f = 1 + (f - 1) * 0.6;   // ukjent fortau teller mindre enn «merket uten», men er ikke det samme som trygt
+      if (cond.dark && w.lit !== 1) f *= 1.5;
+      return f;
     }
     function weights(G, cond) {   // hvor mye lengre en vei «teller» under dagens forhold. Høyt tall betyr: unngå hvis det finnes noe annet.
       return G.ways.map(function (w) {
@@ -1360,10 +1596,10 @@
         if (cond.fore === 'sno' && !w.plow) m *= 6;
         if (cond.fore === 'vatt' && w.surf === 'sti') m *= 3;
         if (cond.dark) m *= w.lit === 1 ? 0.8 : w.lit === 0 ? 1.3 : 1;
-        return m;
+        return m * riskFactor(w, cond);
       });
     }
-    function dijkstra(G, src, wm, pm, extra, stop) {   // billigste vei fra src til alle punkter (eller til stop)
+    function dijkstra(G, src, wm, pm, extra, stop, em) {   // billigste vei fra src til alle punkter (eller til stop). em: tillegg per strekning, 0 = stengt
       var n = G.lat.length, cost = new Float64Array(n).fill(Infinity), met = new Float64Array(n), pe = new Int32Array(n).fill(-1), done = new Uint8Array(n);
       var hk = [0], hn = [src];
       cost[src] = 0;
@@ -1388,6 +1624,8 @@
           var e = a[j], v = G.to[e];
           if (done[v]) continue;
           var c = G.len[e] * wm[G.way[e]];
+          if (em) { if (!em[e >> 1]) continue; c *= em[e >> 1]; }
+          else if (hardBan(G.ways[G.way[e]])) continue;
           if (pm > 1 && G.pst[e >> 1]) c *= pm;
           if (extra && extra[e >> 1]) c *= extra[e >> 1];
           var nc = k + c;
@@ -1407,15 +1645,37 @@
       while (res.pe[v] >= 0) { var e = res.pe[v]; edges.push(e); v = G.to[e ^ 1]; }
       return edges.reverse();
     }
-    function prepare(G, start, D, cond) {   // finn mulige vendepunkter: i hver himmelretning og avstand, det som ligger lengst unna i luftlinje
-      var s = snap(G, start);
+    function limits(G, s, cond, avoid) {   // per strekning: 0 = brukes ikke, ellers et tillegg. zone = privat vei og innkjørsel du må ut gjennom fra start
+      var n = G.to.length >> 1, em = new Float32Array(n).fill(1), zone = new Uint8Array(n), stack = [s], seen = {}, i;
+      seen[s] = 1;
+      while (stack.length) {
+        var u = stack.pop(), a = G.adj[u];
+        for (i = 0; i < a.length; i++) {
+          var w = G.ways[G.way[a[i]]];
+          if (!SOFT[w.acc]) continue;
+          zone[a[i] >> 1] = 1;
+          if (!seen[G.to[a[i]]]) { seen[G.to[a[i]]] = 1; stack.push(G.to[a[i]]); }
+        }
+      }
+      for (i = 0; i < n; i++) {
+        var w2 = G.ways[G.way[2 * i]];
+        if (hardBan(w2) || (SOFT[w2.acc] && !zone[i]) || (avoid && avoid[i]) || (cond.fore === 'sno' && (w2.winter || w2.tough))) em[i] = 0;
+        else if (G.par[i] && risk(w2)) em[i] = 2 / riskFactor(w2, cond);   // gang- og sykkelveien ved siden av skal velges foran bilveien
+        else if (G.par[i] && w2.side !== 1) em[i] = 2;
+      }
+      return { em: em, zone: zone };
+    }
+    function prepare(G, start, D, cond, opt) {   // finn mulige vendepunkter: i hver himmelretning og avstand, det som ligger lengst unna i luftlinje
+      var avoid = opt && opt.avoid ? opt.avoid : null, s = snap(G, start, avoid);
       if (s < 0) return null;
-      var wm = weights(G, cond), pm = cond.fore === 'sno' ? 10 : 1, out = dijkstra(G, s, wm, pm, null, -1);
+      if (avoid && avoid.length < (G.to.length >> 1)) { var grown = new Uint8Array(G.to.length >> 1); grown.set(avoid); avoid = grown; }   // start midt på en strekning ga nye strekninger
+      var lim = limits(G, s, cond, avoid);
+      var wm = weights(G, cond), pm = cond.fore === 'sno' ? 10 : 1, out = dijkstra(G, s, wm, pm, null, -1, lim.em);
       var bands = [0.30, 0.36, 0.42, 0.48, 0.54], best = {}, n = G.lat.length;
       for (var v = 0; v < n; v++) {
         var m = out.met[v], e = out.pe[v];
         if (e < 0 || m < 0.27 * D || m > 0.57 * D) continue;
-        if (wm[G.way[e]] > 1.5 || (pm > 1 && G.pst[e >> 1])) continue;   // ikke snu på en vei forholdene taler mot
+        if (wm[G.way[e]] * lim.em[e >> 1] > 1.5 || (pm > 1 && G.pst[e >> 1])) continue;   // ikke snu på en vei forholdene taler mot
         var dx = G.x[v] - G.x[s], dy = G.y[v] - G.y[s], air = Math.sqrt(dx * dx + dy * dy);
         if (air < 0.1 * D) continue;
         var sector = Math.floor((((Math.atan2(dx, dy) / RAD) + 360) % 360) / 30) % 12;
@@ -1426,64 +1686,189 @@
       }
       var seen = {}, turns = [];
       Object.keys(best).forEach(function (k2) { var t = best[k2].v; if (!seen[t]) { seen[t] = 1; turns.push(t); } });
-      return { s: s, wm: wm, pm: pm, out: out, turns: turns };
+      return { s: s, wm: wm, pm: pm, em: lim.em, zone: lim.zone, avoid: avoid, out: out, turns: turns };
+    }
+    function uturns(edges) {   // steder der runden snur og går rett tilbake samme strekning: en blindvei
+      var n = 0;
+      for (var i = 1; i < edges.length; i++) if ((edges[i] ^ 1) === edges[i - 1]) n++;
+      return n;
     }
     function tryTurn(G, P, T, D) {   // ut til vendepunktet, og hjem en annen vei: veien ut og veier tett inntil den teller mye lengre
       var on = chain(G, P.out, T);
       if (!on.length) return null;
-      var extra = new Float32Array(G.to.length >> 1), grid = {}, cell = 20, x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, i;
+      var extra = new Float32Array(G.to.length >> 1), near = grid(20), x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, i;
       on.forEach(function (e) {
         extra[e >> 1] = 8;
-        var a = G.to[e ^ 1], b = G.to[e], n = Math.max(1, Math.ceil(G.len[e] / 10));
-        for (var j = 0; j <= n; j++) {
-          var x = G.x[a] + (G.x[b] - G.x[a]) * j / n, y = G.y[a] + (G.y[b] - G.y[a]) * j / n, k = Math.floor(x / cell) + ',' + Math.floor(y / cell);
-          (grid[k] || (grid[k] = [])).push(x, y);
-          if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
-        }
+        var a = G.to[e ^ 1], b = G.to[e];
+        along(near, G.x[a], G.y[a], G.x[b], G.y[b], 10);
+        x0 = Math.min(x0, G.x[a], G.x[b]); x1 = Math.max(x1, G.x[a], G.x[b]); y0 = Math.min(y0, G.y[a], G.y[b]); y1 = Math.max(y1, G.y[a], G.y[b]);
       });
       for (i = 0; i < extra.length; i++) {   // fortau og parallelle veier innen 18 m regnes som samme vei
         if (extra[i]) continue;
         var u = G.to[2 * i + 1], v = G.to[2 * i], mx = (G.x[u] + G.x[v]) / 2, my = (G.y[u] + G.y[v]) / 2;
         if (mx < x0 - 20 || mx > x1 + 20 || my < y0 - 20 || my > y1 + 20) continue;
-        var cx = Math.floor(mx / cell), cy = Math.floor(my / cell), hit = false;
-        for (var a2 = -1; a2 <= 1 && !hit; a2++) for (var b2 = -1; b2 <= 1 && !hit; b2++) {
-          var l = grid[(cx + a2) + ',' + (cy + b2)];
-          if (l) for (var q = 0; q < l.length; q += 2) if ((l[q] - mx) * (l[q] - mx) + (l[q + 1] - my) * (l[q + 1] - my) < 324) { hit = true; break; }
-        }
-        if (hit) extra[i] = 4;
+        if (near.near(mx, my, 18)) extra[i] = 4;
       }
-      var back = dijkstra(G, T, P.wm, P.pm, extra, P.s);
+      var back = dijkstra(G, T, P.wm, P.pm, extra, P.s, P.em);
       if (!isFinite(back.cost[P.s])) return null;
       var be = chain(G, back, P.s);
       while (on.length && be.length && (on[on.length - 1] >> 1) === (be[0] >> 1)) { on.pop(); be.shift(); }   // blindvei ved vendepunktet klippes bort
       if (!on.length || !be.length) return null;
       var edges = on.concat(be), path = [[G.lat[P.s], G.lng[P.s]]], total = 0;
+      if (uturns(edges)) return null;   // ingen blindveier i en runde
       edges.forEach(function (e) { var w = G.to[e]; path.push([G.lat[w], G.lng[w]]); total += G.len[e]; });
       if (Math.abs(total - D) / D > 0.10) return null;
       var t = G.to[on[on.length - 1]];
       return { path: path, edges: edges, total: total, err: (total - D) / D, turn: on.length,
         bearing: ((Math.atan2(G.x[t] - G.x[P.s], G.y[t] - G.y[P.s]) / RAD) + 360) % 360 };
     }
-    function describe(G, c) {   // hva runden består av, målt på kartdataene
-      var o = { parts: { asfalt: 0, grus: 0, sti: 0 }, unplowed: 0, piste: 0, litYes: 0, litNo: 0, litUnknown: 0, via: '' }, names = {}, first = '';
-      c.edges.forEach(function (e, n) {
-        var w = G.ways[G.way[e]], L = G.len[e];
+    function index(G) {   // rutenett over strekningene, for å kjenne igjen en tegnet rute
+      if (G.eg && G.egN === G.to.length) return G.eg;
+      var g = {};
+      for (var e = 0; e < G.to.length; e += 2) {
+        var a = G.to[e + 1], b = G.to[e], n = Math.max(1, Math.ceil(G.len[e] / 30)), last = '';
+        for (var j = 0; j <= n; j++) {
+          var k = Math.floor((G.x[a] + (G.x[b] - G.x[a]) * j / n) / 60) + ',' + Math.floor((G.y[a] + (G.y[b] - G.y[a]) * j / n) / 60);
+          if (k !== last) { (g[k] || (g[k] = [])).push(e); last = k; }
+        }
+      }
+      G.eg = g; G.egN = G.to.length;
+      return g;
+    }
+    function nearest(G, x, y, maxD, ux, uy) {   // nærmeste strekning innen maxD meter. Med ux, uy: bare strekninger som går samme vei.
+      var g = index(G), cx = Math.floor(x / 60), cy = Math.floor(y / 60), best = -1, bd = maxD * maxD;
+      for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) {
+        var l = g[(cx + a) + ',' + (cy + b)];
+        if (l) for (var q = 0; q < l.length; q++) {
+          var e = l[q], p = G.to[e + 1], r = G.to[e], dx = G.x[r] - G.x[p], dy = G.y[r] - G.y[p], l2 = dx * dx + dy * dy;
+          if (ux !== undefined && l2 > 0 && Math.abs(ux * dx + uy * dy) < 0.7 * Math.sqrt(l2)) continue;
+          var t = l2 > 0 ? Math.max(0, Math.min(1, ((x - G.x[p]) * dx + (y - G.y[p]) * dy) / l2)) : 0;
+          var qx = G.x[p] + dx * t - x, qy = G.y[p] + dy * t - y, d = qx * qx + qy * qy;
+          if (d < bd) { bd = d; best = e; }
+        }
+      }
+      return best;
+    }
+    function trace(G, path) {   // hvilke strekninger i kartet en tegnet rute følger. miss = meter som ikke ble kjent igjen
+      var pieces = [], miss = 0;
+      for (var i = 1; i < path.length; i++) {
+        var ax = (path[i - 1][1] - G.ref[1]) * G.kx, ay = (path[i - 1][0] - G.ref[0]) * G.ky, bx = (path[i][1] - G.ref[1]) * G.kx, by = (path[i][0] - G.ref[0]) * G.ky;
+        var L = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
+        if (L < 0.5) continue;
+        var n = Math.ceil(L / 12), ux = (bx - ax) / L, uy = (by - ay) / L;
+        for (var j = 0; j < n; j++) {
+          var t0 = j / n, t1 = (j + 1) / n, e = nearest(G, ax + (bx - ax) * (t0 + t1) / 2, ay + (by - ay) * (t0 + t1) / 2, 9, ux, uy);
+          var p0 = [path[i - 1][0] + (path[i][0] - path[i - 1][0]) * t0, path[i - 1][1] + (path[i][1] - path[i - 1][1]) * t0];
+          var p1 = [path[i - 1][0] + (path[i][0] - path[i - 1][0]) * t1, path[i - 1][1] + (path[i][1] - path[i - 1][1]) * t1];
+          if (e < 0) miss += L / n;
+          pieces.push([e, L / n, p0, p1]);
+        }
+      }
+      return { pieces: pieces, miss: miss };
+    }
+    function issue(G, e, w, cond, ctx) {   // hva som taler mot en strekning, eller ''
+      var i = e >> 1;
+      if (ctx && ctx.avoid && ctx.avoid[i]) return 'unnga';
+      if (w.acc && !(SOFT[w.acc] && ctx && ctx.zone && ctx.zone[i])) return w.acc;
+      if (cond && cond.fore === 'sno' && w.winter) return 'vinter';
+      if (cond && cond.fore === 'sno' && w.tough) return 'krevende';
+      if (!G.par[i] && risk(w)) return 'risk' + risk(w);
+      return '';
+    }
+    function label(G, e, w) {   // hva slags vei, slik det står på kortet
+      var b = BASE[w.kind];
+      if (!w.car) return b;
+      if (G.par[e >> 1]) return b + ' med gang- og sykkelvei ved siden av';
+      if (w.side === 1) return b + ' med fortau';
+      if (!risk(w)) return w.kind === 'bil' ? b + (w.speed ? ' ' + w.speed + ' km/t' : '') : b;
+      return 'langs ' + b + (w.speed ? ' ' + w.speed + ' km/t' : '') + (w.side === 0 ? ' uten fortau' + (w.speed ? '' : ', fart ukjent') : w.speed ? ', fortau ukjent' : ', fart og fortau ukjent');
+    }
+    function describe(G, c, cond, ctx) {   // hva runden består av, målt på kartdataene. c.edges fra søket, eller c.pieces fra en tegnet rute
+      var o = { parts: { asfalt: 0, grus: 0, sti: 0 }, unplowed: 0, piste: 0, litYes: 0, litNo: 0, litUnknown: 0, via: '',
+        roads: {}, risk2: 0, risk1: 0, unsafe: 0, banned: 0, soft: 0, avoided: 0, season: 0, spots: [] }, names = {}, first = '', cur = null;
+      var pieces = c.pieces || c.edges.map(function (e) { var a = G.to[e ^ 1], b = G.to[e]; return [e, G.len[e], [G.lat[a], G.lng[a]], [G.lat[b], G.lng[b]]]; });
+      pieces.forEach(function (pc, n) {
+        var e = pc[0], L = pc[1];
+        if (e < 0) { cur = null; return; }
+        var w = G.ways[G.way[e]], lb = label(G, e, w), is = issue(G, e, w, cond, ctx);
         o.parts[w.surf] += L;
         if (!w.plow) o.unplowed += L;
         if (G.pst[e >> 1]) o.piste += L;
         if (w.lit === 1) o.litYes += L; else if (w.lit === 0) o.litNo += L; else o.litUnknown += L;
         if (w.name) { names[w.name] = (names[w.name] || 0) + L; if (!first && n < 3) first = w.name; }
+        o.roads[lb] = (o.roads[lb] || 0) + L;
+        if (is === 'risk2') { o.risk2 += L; o.unsafe += L * (cond && cond.dark && w.lit !== 1 ? 1.5 : 1); }
+        else if (is === 'risk1') { o.risk1 += L; o.unsafe += 0.5 * L * (cond && cond.dark && w.lit !== 1 ? 1.5 : 1); }
+        else if (is === 'unnga') o.avoided += L;
+        else if (is === 'vinter' || is === 'krevende') o.season += L;
+        else if (SOFT[is]) o.soft += L;
+        else if (is) o.banned += L;
+        if (!is) { cur = null; return; }
+        var text = is.indexOf('risk') === 0 ? lb : ACC[is];
+        if (cur && cur.text === text && cur.name === w.name) { cur.m += L; cur.pts.push(pc[3]); }
+        else { cur = { kind: is, text: text, name: w.name, m: L, pts: [pc[2], pc[3]] }; o.spots.push(cur); }
       });
       var top = 0;
       Object.keys(names).forEach(function (k) { if (k !== first && names[k] > top) { top = names[k]; o.via = k; } });
       return o;
     }
-    function coverage(G) {   // hvor stor del av veiene i området som har opplysning om lys
-      var known = 0, all = 0;
-      for (var e = 0; e < G.to.length; e += 2) { all += G.len[e]; if (G.ways[G.way[e]].lit !== -1) known += G.len[e]; }
-      return all > 0 ? known / all : 0;
+    function dist(m) { return m >= 95 ? String(Math.round(m / 100) / 10).replace('.', ',') + ' km' : Math.max(10, Math.round(m / 10) * 10) + ' m'; }
+    function roadLine(o) {   // «Veier: 3,1 km boligvei, 1,4 km gang- og sykkelvei, 0,5 km langs bilvei 60 km/t uten fortau»
+      var keys = Object.keys(o.roads).filter(function (k) { return o.roads[k] >= 30; }).sort(function (a, b) { return o.roads[b] - o.roads[a]; });
+      var show = keys.filter(function (k, n) { return n < 4 || k.indexOf('langs ') === 0; });
+      return show.length ? 'Veier: ' + show.map(function (k) { return dist(o.roads[k]) + ' ' + k; }).join(', ') : '';
     }
-    return { build: build, snap: snap, prepare: prepare, tryTurn: tryTurn, describe: describe, coverage: coverage, classify: classify, dijkstra: dijkstra, weights: weights };
+    function warnings(o) {   // varsler for en rute du har tegnet selv: hvor, hvor langt og hvorfor
+      var merged = [];
+      o.spots.forEach(function (s) {
+        var same = merged.filter(function (q) { return q.text === s.text && q.name === s.name; })[0];
+        if (same) { same.m += s.m; same.pts = same.pts.concat(s.pts); } else merged.push({ kind: s.kind, text: s.text, name: s.name, m: s.m, pts: s.pts.slice() });
+      });
+      return merged.filter(function (s) { return s.m >= (s.kind === 'risk1' ? 100 : 15); }).map(function (s) {
+        return { kind: s.kind, m: s.m, pts: s.pts, text: dist(s.m) + ' ' + s.text + (s.name ? ' (' + s.name + ')' : '') };
+      }).sort(function (a, b) { return (a.kind === 'risk1') - (b.kind === 'risk1') || b.m - a.m; });
+    }
+    function stretch(G, pt) {   // strekningen du trykket på: fra kryss til kryss, høyst 800 m hver vei
+      var x = (pt[1] - G.ref[1]) * G.kx, y = (pt[0] - G.ref[0]) * G.ky, e = nearest(G, x, y, 40);
+      if (e < 0) return null;
+      var w = G.ways[G.way[e]], a = G.to[e + 1], b = G.to[e], pts = [[G.lat[a], G.lng[a]], [G.lat[b], G.lng[b]]], m = G.len[e];
+      function walk(node, prev, front) {
+        var run = 0;
+        while (G.adj[node].length === 2 && run < 800) {
+          var nx = (G.adj[node][0] >> 1) === (prev >> 1) ? G.adj[node][1] : G.adj[node][0];
+          node = G.to[nx]; prev = nx; run += G.len[nx]; m += G.len[nx];
+          if (front) pts.unshift([G.lat[node], G.lng[node]]); else pts.push([G.lat[node], G.lng[node]]);
+        }
+      }
+      walk(a, e, true); walk(b, e, false);
+      return { pts: pts, m: m, name: w.name || BASE[w.kind] };
+    }
+    function mark(G, lines, tol) {   // strekningene som ligger langs merkene dine
+      var gr = grid(20), out = new Uint8Array(G.to.length >> 1);
+      lines.forEach(function (l) {
+        for (var i = 1; i < l.length; i++) along(gr, (l[i - 1][1] - G.ref[1]) * G.kx, (l[i - 1][0] - G.ref[0]) * G.ky, (l[i][1] - G.ref[1]) * G.kx, (l[i][0] - G.ref[0]) * G.ky, 5);
+      });
+      if (gr.any()) for (var p = 0; p < out.length; p++) {
+        var u = G.to[2 * p + 1], v = G.to[2 * p];
+        if (gr.near(G.x[u], G.y[u], tol) && gr.near(G.x[v], G.y[v], tol) && gr.near((G.x[u] + G.x[v]) / 2, (G.y[u] + G.y[v]) / 2, tol)) out[p] = 1;
+      }
+      return out;
+    }
+    function cover(G) {   // hvor stor del av veiene i området som har hver opplysning. Fart og fortau måles på veier med biltrafikk.
+      var all = 0, car = 0, k = { lit: 0, surf: 0, acc: 0, speed: 0, side: 0 };
+      for (var e = 0; e < G.to.length; e += 2) {
+        var w = G.ways[G.way[e]], L = G.len[e];
+        all += L;
+        if (w.lit !== -1) k.lit += L;
+        if (w.sfk) k.surf += L;
+        if (w.ack) k.acc += L;
+        if (w.car) { car += L; if (w.speed) k.speed += L; if (w.side !== -1) k.side += L; }
+      }
+      return { lit: all ? k.lit / all : 0, surf: all ? k.surf / all : 0, acc: all ? k.acc / all : 0, speed: car ? k.speed / car : 0, side: car ? k.side / car : 0, km: all / 1000, carKm: car / 1000 };
+    }
+    function coverage(G) { return cover(G).lit; }
+    return { build: build, pack: pack, snap: snap, prepare: prepare, tryTurn: tryTurn, describe: describe, coverage: coverage, cover: cover, classify: classify,
+      dijkstra: dijkstra, weights: weights, trace: trace, roadLine: roadLine, warnings: warnings, stretch: stretch, mark: mark, uturns: uturns, risk: risk, dist: dist };
   })();
   // </net-pure>
 
@@ -1529,14 +1914,22 @@
       if (darkText) parts.push(darkText);
       return parts.join(', ');
     }
-    function score(c, cond) {   // tillegg til poengene ut fra forholdene. Høyere er bedre.
+    function ground(c, cond) {   // meter med underlag som føret taler mot
+      var i = c.info;
+      return !i ? 0 : cond.fore === 'sno' ? i.unplowed + i.piste : cond.fore === 'vatt' ? i.parts.sti : 0;
+    }
+    function windCounts(c, cond, best) {   // på vått føre og på snø og is avgjør vinden bare mellom runder som er like gode på underlag (innen 100 m)
+      return !!cond.wind && (cond.fore === 'bart' || best === undefined || ground(c, cond) <= best + 100);
+    }
+    function score(c, cond, best) {   // tillegg til poengene ut fra forholdene. Høyere er bedre. best = minste ground() blant rundene
       var i = c.info, T = c.total, v = 0;
       if (i) {
         if (cond.fore === 'sno') v -= 10 * (i.unplowed + i.piste) / T;
         if (cond.fore === 'vatt') v -= 5 * i.parts.sti / T;
         if (cond.dark) v += 3 * i.litYes / T - 2 * i.litNo / T;
+        if (i.unsafe) v -= 12 * i.unsafe / T;   // langs bilvei med høy fart uten fortau, eller der fart og fortau er ukjent
       }
-      if (cond.wind) v += 1.5 * Math.cos((c.bearing - cond.wind.from) * RAD);
+      if (cond.wind) v += windCounts(c, cond, best) ? 1.5 * Math.cos((c.bearing - cond.wind.from) * RAD) : -1.5;
       return v;
     }
     function dist(m) { return m >= 950 ? String(Math.round(m / 100) / 10).replace('.', ',') + ' km' : Math.max(10, Math.round(m / 10) * 10) + ' m'; }
@@ -1552,6 +1945,11 @@
         if (i.litNo >= 50) unmet.push(dist(i.litNo) + ' uten lys');   // «uten lys» bare der kartet sier det. Resten er ukjent, ikke gjettet.
         if (i.litUnknown >= 50) unmet.push('lysdata mangler for ' + dist(i.litUnknown));
       }
+      if (i.roads) {
+        if (i.risk2 >= 30) unmet.push(dist(i.risk2) + ' langs bilvei med høy fart uten fortau');
+        if (i.risk1 >= 100) unmet.push(dist(i.risk1) + ' langs bilvei der fart eller fortau er ukjent');
+        if (i.risk2 < 30 && i.risk1 < 100) why.push('ingen strekning langs bilvei med høy fart');
+      }
       if (cond.wind) {
         var cs = Math.cos((c.bearing - cond.wind.from) * RAD);
         if (cs >= 0.5) why.push('motvind ut og medvind hjem'); else if (cs <= -0.5) unmet.push('medvind ut og motvind hjem');
@@ -1566,7 +1964,7 @@
       if (cond.fore === 'sno' || (typeof cond.temp === 'number' && cond.temp <= 0)) t.push('Det kan være glatt, så piggsko kan være lurt.');
       return t.join(' ');
     }
-    return { fore: fore, bestWindow: bestWindow, bestText: bestText, line: line, score: score, explain: explain, tips: tips, windName: windName, FORE: FORE };
+    return { fore: fore, bestWindow: bestWindow, bestText: bestText, line: line, score: score, ground: ground, windCounts: windCounts, explain: explain, tips: tips, windName: windName, FORE: FORE };
   })();
   // </cond-pure>
 
@@ -1688,13 +2086,44 @@
 
   // ---------- Turforslag med hensyn til vær og føre: kartdata hentes én gang, og rundene regnes ut her ----------
   // <local-search>
-  var mapCache = null;
-  function mapData(start, D) {   // veier, lys og skiløyper rundt start. Gjenbrukes så lenge neste søk ligger innenfor samme område.
-    var R = 0.5 * D + 400, dLat = R / 110540, dLon = R / (111320 * Math.cos(start[0] * Math.PI / 180));
-    var box = { s: start[0] - dLat, n: start[0] + dLat, w: start[1] - dLon, e: start[1] + dLon };
-    if (mapCache && mapCache.s <= box.s && mapCache.n >= box.n && mapCache.w <= box.w && mapCache.e >= box.e) return Promise.resolve(mapCache.G);
+  var mapCache = null, mapStore = null, MAPV = 2, MAP_DAYS = 30;
+  function idb(mode, fn) {   // liten lagringsplass i nettleseren for kartdata. Svarer med null hvis nettleseren ikke tillater det.
+    return new Promise(function (done) {
+      try {
+        var rq = indexedDB.open('trysil-lopekart', 1);
+        rq.onupgradeneeded = function () { rq.result.createObjectStore('kart'); };
+        rq.onerror = rq.onblocked = function () { done(null); };
+        rq.onsuccess = function () {
+          var db = rq.result, out = null;
+          try {
+            var tx = db.transaction('kart', mode), r = fn(tx.objectStore('kart'));
+            if (r) r.onsuccess = function () { out = r.result === undefined ? null : r.result; };
+            tx.oncomplete = function () { db.close(); done(out); };
+            tx.onerror = tx.onabort = function () { db.close(); done(null); };
+          } catch (e) { db.close(); done(null); }
+        };
+      } catch (e) { done(null); }
+    });
+  }
+  function covers(c, b) { return !!c && c.s <= b.s && c.n >= b.n && c.w <= b.w && c.e >= b.e; }
+  function boxAround(p, R) {
+    var dLat = R / 110540, dLon = R / (111320 * Math.cos(p[0] * Math.PI / 180));
+    return { s: p[0] - dLat, n: p[0] + dLat, w: p[1] - dLon, e: p[1] + dLon };
+  }
+  function grow(box, rec) {   // hent litt mer enn det som trengs, og ta med området som alt er lagret når det ikke blir for stort
+    var ph = (box.n - box.s) * 0.15, pw = (box.e - box.w) * 0.15, g = { s: box.s - ph, n: box.n + ph, w: box.w - pw, e: box.e + pw };
+    var mh = 3500 / 110540, mw = 3500 / (111320 * Math.cos((box.s + box.n) / 2 * Math.PI / 180)), cy = (g.s + g.n) / 2, cx = (g.w + g.e) / 2;   // minst 7 km på hver led, så neste rute og neste søk som regel er dekket
+    if (g.n - g.s < 2 * mh) { g.s = cy - mh; g.n = cy + mh; }
+    if (g.e - g.w < 2 * mw) { g.w = cx - mw; g.e = cx + mw; }
+    if (rec) {
+      var u = { s: Math.min(g.s, rec.s), n: Math.max(g.n, rec.n), w: Math.min(g.w, rec.w), e: Math.max(g.e, rec.e) };
+      if (u.n - u.s <= 0.16 && u.e - u.w <= 0.34) g = u;   // ca. 18 km hver vei
+    }
+    return g;
+  }
+  function fetchMap(box) {   // veier, lys, skiløyper og ferjer fra OpenStreetMap
     var b = [box.s, box.w, box.n, box.e].map(function (v) { return v.toFixed(5); }).join(',');
-    var q = '[out:json][timeout:20];(way["highway"](' + b + ');way["piste:type"](' + b + '););out tags geom qt;';
+    var q = '[out:json][timeout:20];(way["highway"](' + b + ');way["piste:type"](' + b + ');way["route"="ferry"](' + b + '););out tags geom qt;';
     function attempt(i) {
       if (i >= OVERPASS.length) return Promise.reject(new Error('Ingen kartdata'));
       var ctrl = new AbortController(), timer = setTimeout(function () { ctrl.abort(); }, 15000);
@@ -1704,32 +2133,55 @@
         .catch(function () { clearTimeout(timer); return attempt(i + 1); });
     }
     return attempt(0).then(function (j) {
-      var G = Net.build(j, start);
-      if (!G.to.length) throw new Error('Ingen veier');
-      mapCache = { s: box.s, n: box.n, w: box.w, e: box.e, G: G };
-      return G;
+      var rec = { v: MAPV, at: Date.now(), s: box.s, n: box.n, w: box.w, e: box.e, els: Net.pack(j).els };
+      mapStore = rec;
+      idb('readwrite', function (st) { return st.put(rec, 'omrade'); });   // lagres i nettleseren, så turforslag virker når kilden er nede
+      return rec;
     });
   }
+  function useMap(rec, stale) {
+    var G = Net.build({ els: rec.els }, [(rec.s + rec.n) / 2, (rec.w + rec.e) / 2]);
+    if (!G.to.length) throw new Error('Ingen veier');
+    mapCache = { s: rec.s, n: rec.n, w: rec.w, e: rec.e, G: G, at: rec.at, stale: stale };
+    return mapCache;
+  }
+  function mapBox(box) {   // kartdata for et område: fra minnet, fra nettleserens lager, eller hentet på nytt. Svar: { G, at, stale }
+    if (covers(mapCache, box)) return Promise.resolve(mapCache);
+    var first = mapStore ? Promise.resolve(mapStore) : idb('readonly', function (st) { return st.get('omrade'); });
+    return first.then(function (rec) {
+      if (rec && rec.v === MAPV && Array.isArray(rec.els) && rec.els.length) mapStore = rec; else rec = null;
+      if (rec && covers(rec, box)) {
+        var old = Date.now() - rec.at > MAP_DAYS * 86400000;
+        if (old) fetchMap(grow(box, rec)).catch(function () {});   // gammelt: bruk det nå, og hent nytt i bakgrunnen til neste gang
+        return useMap(rec, old);
+      }
+      return fetchMap(grow(box, rec)).then(function (r2) { return useMap(r2, false); });
+    });
+  }
+  function mapData(start, D) { return mapBox(boxAround(start, 0.5 * D + 400)); }
   function pause() { return new Promise(function (go) { setTimeout(go, 0); }); }
   async function makeToursLocal(start, D, goalKey, cond, tok, progress) {
     progress(0.05, 'Henter kartdata om veier, lys og skiløyper…');
-    var G = await mapData(start, D);
+    var M = await mapData(start, D), G = M.G;
     if (tok.cancel) return null;
     progress(0.35, 'Regner ut runder…');
     await pause();
-    var P = Net.prepare(G, start, D, cond), cands = [];
-    if (!P) return { tours: [], reason: 'none', local: true };
+    var mask = avoid.length ? Net.mark(G, avoid.map(function (a) { return a.pts; }), 12) : null;
+    var P = Net.prepare(G, start, D, cond, { avoid: mask }), cands = [], extra = { local: true, litKnown: Net.coverage(G), cover: Net.cover(G), mapAt: M.at, stale: M.stale };
+    function none() { extra.tours = []; extra.reason = 'none'; return extra; }
+    if (!P) return none();
     for (var n = 0; n < P.turns.length; n++) {
       var c = Net.tryTurn(G, P, P.turns[n], D);
       if (c) cands.push(c);
       if (n % 8 === 7) { progress(0.35 + 0.35 * n / P.turns.length, 'Regner ut runder…'); await pause(); if (tok.cancel) return null; }
     }
-    if (!cands.length) return { tours: [], reason: 'none', local: true };
+    if (!cands.length) return none();
     cands.forEach(function (q) {
       q.start = start; q.cum = Plan.cumOf(q.path); q.total = q.cum[q.cum.length - 1]; q.err = (q.total - D) / D;
-      q.repeated = Plan.repeated(q.path, q.cum); q.info = Net.describe(G, q); q.surf = q.info.parts; q.turnName = q.info.via; q.startName = '';
-      q.pre = Plan.score(q, goalKey) + Cond.score(q, cond);
+      q.repeated = Plan.repeated(q.path, q.cum); q.info = Net.describe(G, q, cond, P); q.surf = q.info.parts; q.turnName = q.info.via; q.startName = '';
     });
+    var best = Math.min.apply(null, cands.map(function (q) { return Cond.ground(q, cond); }));
+    cands.forEach(function (q) { q.pre = Plan.score(q, goalKey) + Cond.score(q, cond, best); });
     cands.sort(function (a, b) { return b.pre - a.pre; });
     var fin = pickDistinct(cands, 6, [0.7]), m = 0;
     progress(0.72, 'Sjekker høyde…');
@@ -1740,11 +2192,12 @@
       progress(0.72 + 0.28 * m / fin.length, 'Sjekker høyde (' + m + ' av ' + fin.length + ')…');
     });
     if (tok.cancel) return null;
-    fin.forEach(function (q) { q.score = Plan.score(q, goalKey) + Cond.score(q, cond); });
+    fin.forEach(function (q) { q.score = Plan.score(q, goalKey) + Cond.score(q, cond, best); });
     fin.sort(function (a, b) { return b.score - a.score; });
     var pick = pickDistinct(fin, 3, [0.6, 0.8]);
     pick.sort(function (a, b) { return b.score - a.score; });
-    return { tours: pick, found: cands.length, local: true, litKnown: Net.coverage(G) };
+    extra.tours = pick; extra.found = cands.length;
+    return extra;
   }
   // </local-search>
 
@@ -1790,6 +2243,7 @@
     el('bestLine').textContent = bestLine(p);
     el('bestLine').hidden = !el('bestLine').textContent;
     el('foreSet').hidden = !use;
+    el('useNote').hidden = use;
     el('pfAutoText').textContent = 'Auto: ' + Cond.FORE[c.auto.kind];
     el('foreNote').textContent = c.auto.why + (snow.status === 'ok' ? ' Snødybde fra Open-Meteo.' : '') + ' Trykk for å overstyre.';
   }
@@ -1921,6 +2375,7 @@
       line('', km(c.total) + ' km · ' + (c.elev ? '↑ ' + Math.round(c.elev.up) + ' m' : 'høyde ikke tilgjengelig') + ' · ca. ' + fmtTime(mins));
       line('sub', c.surf ? surfLine(c.surf) || 'Underlag ikke tilgjengelig' : 'Underlag ikke tilgjengelig');
       line('sub', c.repeated >= 50 ? 'Ca. ' + Math.round(c.repeated / 10) * 10 + ' m går samme vei to ganger.' : 'Ingen strekning går samme vei to ganger.');
+      if (res.local && c.info && c.info.roads) { var rl = Net.roadLine(c.info); if (rl) line('sub', rl); }
       if (res.cond && res.cond.use && res.local) {
         var ex = Cond.explain(c, res.cond);
         if (ex.why.length) line('why', 'Valgt fordi: ' + ex.why.join(', '));
@@ -1943,14 +2398,15 @@
     function progress(f, text) { if (tok.cancel) return; el('planFill').style.width = Math.round(f * 100) + '%'; el('planProgress').textContent = text; }
     var cond = currentCond(start, D / 1000 * paceMin), notes = [], job;
     el('planTips').hidden = true;
+    el('planCover').hidden = true;
     if (cond.use && D <= 16000) {
       job = makeToursLocal(start, D, goalKey, cond, tok, progress).catch(function () {
         if (tok.cancel) return null;
-        notes.push('Kartdata om veier, lys og skiløyper svarte ikke nå. Rundene er laget som før, uten hensyn til føre, lys og vind.');
+        notes.push('Kartdata om veier, lys og skiløyper svarte ikke nå. Rundene er laget som før, uten hensyn til føre, lys og vind' + (avoid.length ? ', og uten Unngå-merkene dine.' : '.'));
         return makeTours(start, D, goalKey, tok, progress);
       });
     } else {
-      if (cond.use) notes.push('Runder over 16 km lages som før, uten hensyn til føre, lys og vind.');
+      if (cond.use) notes.push('Runder over 16 km lages som før, uten hensyn til føre, lys og vind' + (avoid.length ? ', og uten Unngå-merkene dine.' : '.'));
       job = makeTours(start, D, goalKey, tok, progress);
     }
     job.then(function (res) {
@@ -1966,6 +2422,11 @@
       showTours(res, start, paceMin, D);
       if (cond.use && res.local) {
         if (res.tours.every(function (q) { return q.unmet > 0; })) notes.unshift('Ingen runde passer forholdene helt. Dette er de beste jeg fant, og kortene sier hva som ikke ble oppfylt.');
+        if (res.stale) notes.push('Kartdataene er fra ' + new Date(res.mapAt).toLocaleDateString('nb-NO') + '. Nye hentes i bakgrunnen.');
+        var cv = res.cover, pc = function (v) { return Math.round(v * 100) + ' %'; };
+        el('planCover').textContent = 'Kartdataene her: fart er kjent på ' + pc(cv.speed) + ' av veiene med biltrafikk og fortau på ' + pc(cv.side) + '. Lys er kjent på ' + pc(cv.lit) +
+          ' av alle veier og stier. Det som mangler, regnes som ukjent, ikke som trygt eller forbudt. Appen er ikke juridisk råd, og skilt på stedet gjelder.';
+        el('planCover').hidden = false;
         if (cond.dark && res.litKnown < 0.3) notes.push('Kartdataene sier lite om lys her: bare ' + Math.round(res.litKnown * 100) + ' % av veiene har opplysning om det.');
       }
       var tips = cond.use ? Cond.tips(cond) : '';
@@ -2266,7 +2727,9 @@
   }
   applyHash(true);
   setCollapsed(state.collapsed);
-  drawHome(); homeUI();
+  drawHome(); homeUI(); drawAvoid();
+  el('about').textContent = 'Versjon ' + new Date(VERSION + 'T12:00:00Z').toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Oslo' }) +
+    ' · Veiopplysninger fra OpenStreetMap kan mangle eller være feil. Appen er ikke juridisk råd, og skilt på stedet gjelder.';
   gpsUI();
   buildMarkers(); draw();
   save();
